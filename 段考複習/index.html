@@ -1,0 +1,1442 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="和美高中高一段考複習系統，包含閃卡、模擬測驗與重點整理。">
+<title>和美高中 高一段考複習系統</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://cdn.tailwindcss.com">
+<link rel="preconnect" href="https://unpkg.com">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap');
+* { font-family: 'Noto Sans TC', sans-serif; }
+.flip-card { perspective: 1000px; }
+.flip-card-inner { transition: transform 0.6s; transform-style: preserve-3d; }
+.flip-card.flipped .flip-card-inner { transform: rotateY(180deg); }
+.flip-card-front, .flip-card-back { backface-visibility: hidden; }
+.flip-card-back { transform: rotateY(180deg); }
+.progress-ring { transition: stroke-dashoffset 0.35s; transform: rotate(-90deg); transform-origin: 50% 50%; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.fade-in { animation: fadeIn 0.3s ease-out; }
+@keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+.pulse { animation: pulse 2s infinite; }
+@keyframes confetti { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(100vh) rotate(720deg); opacity: 0; } }
+.shake { animation: shake 0.5s; }
+@keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+.summary-card { content-visibility: auto; contain-intrinsic-size: 300px; }
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body class="bg-gray-50">
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useMemo } = React;
+
+// ═══════════════════════════════════════════════
+// 📚 題庫資料
+// ═══════════════════════════════════════════════
+
+const SUBJECTS = {
+  math: {
+    name: '數學', icon: '📐', color: 'blue',
+    range: '學測分科頂標 × 生物奧林匹亞整合',
+    publisher: '龍騰版 第二冊（高一）',
+    flashcards: [
+      { q: '【生物素養】細菌每 20 分鐘分裂一次，如何建模？', a: '初始 N₀ 隻，t 小時後 = N₀·2^(3t)\n每小時分裂 3 次 → 等比數列 r=2\n★ 生物的指數成長是等比數列的核心應用' },
+      { q: 'Sₙ 與 aₙ 的關係（頂標必考）', a: 'aₙ = Sₙ - Sₙ₋₁（n≥2），a₁ = S₁\n★ 陷阱：n=1 要分開驗！\n若 Sₙ=3n²+2n → a₁=5, aₙ=6n-1' },
+      { q: '等比級數求和的陷阱', a: 'Sₙ = a₁(1-rⁿ)/(1-r) 只在 r≠1\n若 r=1 → Sₙ = na₁\n★ 頂標：先判斷 r 是否等於 1' },
+      { q: '【生物素養】碳-14 定年法', a: 'N(t)=N₀·(1/2)^(t/5730)\n半衰期 5730 年，等比 r=1/2\n取對數反推年代：t=5730·log(N₀/N)/log2' },
+      { q: '無窮等比級數與碎形', a: '科赫雪花周長→發散（r=4/3>1）\n科赫雪花面積→收斂（有限值）\n★ 周長無窮大但面積有限' },
+      { q: 'Σ 拆解技巧', a: 'Σ(ak+b)=aΣk+bn\nΣk=n(n+1)/2, Σk²=n(n+1)(2n+1)/6\nΣk³=[n(n+1)/2]²=(Σk)²' },
+      { q: '指數函數 y=aˣ 圖形', a: 'a>1 遞增，0<a<1 遞減，都過 (0,1)\n漸近線 y=0，永遠 y>0\n★ aˣ 和 (1/a)ˣ 對 y 軸對稱' },
+      { q: '【化學素養】pH = -log[H⁺]', a: 'pH 差 1 → [H⁺]差 10 倍\n胃酸 pH≈2 vs 血液 pH≈7.4\n差 5.4 pH → 濃度差 10^5.4 ≈ 25 萬倍' },
+      { q: '對數方程式解法', a: '合併→去對數→解方程→驗根\nlog₂(x+3)+log₂(x-1)=3\n→(x+3)(x-1)=8→x²+2x-11=0\n驗根：x>1 → x=-1+2√3 ✓' },
+      { q: '換底公式的連鎖律', a: 'log_a(b)·log_b(c)=log_a(c)\n推論：log_a(b)·log_b(a)=1\n★ 頂標最愛考連鎖律' },
+      { q: '【地震素養】芮氏規模', a: 'M=log(A/A₀)\n每增 1 級→振幅×10→能量×31.6\nM7 vs M5：振幅差 100 倍' },
+      { q: '遞迴數列', a: '用前項定義後項，如 aₙ₊₁=2aₙ+1\n費氏數列 Fₙ=Fₙ₋₁+Fₙ₋₂\n★ 出現在向日葵螺旋中（生物裡的數學）' },
+      { q: '指數不等式方向', a: 'a>1：aˣ>aʸ ⟺ x>y（同向）\n0<a<1：aˣ>aʸ ⟺ x<y（反向）\n★ 對數不等式同理' },
+      { q: '【生態素養】族群邏輯斯諦模型', a: 'P(t)=K/(1+Ce^(-rt))\n當 t→∞，P→K（承載量）\n★ S 型成長曲線 = 指數+對數的綜合應用' },
+    ],
+    quizzes: [
+      { q: '【頂標整合】某細菌族群模型 P(t)=K/(1+9e^(-0.8t))。其瞬時成長速率 dP/dt 何時達最大？', options: ['t≈1.37 小時','t≈2.75 小時','t≈3.46 小時','t≈5.49 小時'], answer: 1, explain: '邏輯斯諦模型最大成長率在 P=K/2。\n1+9e^(-0.8t)=2 → e^(-0.8t)=1/9\nt=ln9/0.8≈2.75 小時。' },
+      { q: '【頂標整合】qPCR 標準樣本初始 10^6 拷貝，Ct=17；未知樣本 Ct=23，假設每 cycle 精準倍增。未知樣本初始拷貝最接近？', options: ['1.56×10^3','1.56×10^4','6.25×10^4','1.28×10^5'], answer: 1, explain: 'Ct 差 6 代表濃度差 2^6=64 倍。\n未知樣本=10^6/64=15625≈1.56×10^4。' },
+      { q: '【頂標整合】某隱性遺傳病在族群中的患病率為 0.04（q²）。若符合 Hardy-Weinberg，帶因者頻率 2pq 為何？', options: ['0.16','0.24','0.32','0.48'], answer: 2, explain: 'q=0.2, p=0.8。\n2pq=2×0.8×0.2=0.32。' },
+      { q: '【頂標整合】酵素反應符合 v=Vmax[S]/(Km+[S])。已知 [S]=20 時 v=40；[S]=60 時 v=60。Km 為何？', options: ['10','20','30','40'], answer: 1, explain: '40=Vmax×20/(Km+20) → Vmax=2Km+40\n60=Vmax×60/(Km+60) → Vmax=Km+60\n聯立得 Km=20（且 Vmax=80）。' },
+      { q: '【頂標整合】基因轉殖成功率 p=0.8，連做 5 次，至少成功 4 次的機率最接近？', options: ['0.4096','0.5904','0.7373','0.8192'], answer: 2, explain: 'P(X≥4)=C(5,4)0.8^4·0.2+0.8^5\n=5×0.4096×0.2+0.32768=0.73728。' },
+      { q: '【頂標整合】PCR 每 cycle 平均放大倍率 1.85，初始 100 分子，15 cycles 後數量量級最接近？', options: ['10^4','10^5','10^6','10^7'], answer: 2, explain: 'N=100×1.85^15。\n1.85^15≈10^4，因此 N≈10^6。' },
+      { q: '【頂標整合】族群中 A 等位基因頻率 p=0.6，適存度 wAA=1, wAa=1, waa=0.5。選汰後 p\' 最接近？', options: ['0.600','0.625','0.652','0.720'], answer: 2, explain: 'q=0.4，平均適存度 w̄=1-0.5q²=0.92。\np\'=(p²wAA+pq wAa)/w̄=(0.36+0.24)/0.92=0.652。' },
+      { q: '【頂標整合】某 14C 樣本測得比例 0.18，背景汙染比例 0.02。校正後真實比例 f=(0.18-0.02)/(1-0.02)。半衰期 5730 年，年代最接近？', options: ['8.7×10^3 年','1.15×10^4 年','1.50×10^4 年','2.30×10^4 年'], answer: 2, explain: 'f≈0.1633，(1/2)^(t/5730)=f。\nt=5730·log2(1/f)≈5730×2.615≈1.5×10^4 年。' },
+      { q: '【頂標整合】離散模型 N_{n+1}=1.2N_n(1-N_n/5000)。其非零平衡值 N* 為何？', options: ['833','1200','2500','5000'], answer: 0, explain: '令 N*=1.2N*(1-N*/5000)。\n除以 N* 得 1=1.2(1-N*/5000)\nN*=5000(1-1/1.2)=833.3。' },
+      { q: '【頂標整合】若 log₂3=a、log₃5=b，則 log₁₀6 為何？', options: ['a/(2ab+a+1)','(a+1)/(ab+a+1)','(1+a)/(1+ab+a)','(ab+1)/(a+1)'], answer: 2, explain: 'log10 3=a log10 2，log10 5=ab log10 2。\nlog10 2+log10 5=1 → log10 2=1/(1+ab)。\nlog10 6=log10 2+log10 3=(1+a)/(1+ab+a)。' },
+    ]
+  },
+  physics: {
+    name: '物理', icon: '⚛️', color: 'purple',
+    range: '學測分科頂標 × 生物奧林匹亞整合',
+    publisher: '南一版 第二冊（高一物理）',
+    flashcards: [
+      { q: '【生物素養】血液流速與血管截面積', a: '連續方程式 A₁v₁=A₂v₂\n主動脈快→微血管慢（總截面積大）\n★ 慢流速有利氧氣與營養交換' },
+      { q: 'v-t 圖深層判讀', a: '斜率=加速度，面積=位移\n面積在 x 軸下方=負位移=往回走\n曲線的凹凸=加速度在變化' },
+      { q: '等加速度三公式選用策略', a: '① v=v₀+at（不含 x）\n② x=v₀t+½at²（不含 v）\n③ v²=v₀²+2ax（不含 t）\n★ 看題目缺什麼，用不含它的公式' },
+      { q: '【生態素養】獵豹追羚羊', a: '獵豹加速追等速的羚羊\n追上條件：x₁=x₂+d\n分段：加速期+等速期\n★ 捕食者-獵物動力學' },
+      { q: '斜面上的力分析', a: '下滑力=mg sinθ\n正向力 N=mg cosθ\n摩擦力 f=μN=μmg cosθ\n★ θ越大→下滑力越大、正向力越小' },
+      { q: '靜摩擦力的真正意義', a: '被動力！0≤fₛ≤μₛN\n★ 常見錯誤：fₛ 恆等於 μₛN\n只有「即將滑動」才等於最大值' },
+      { q: '【素養】太空人的「失重」', a: '太空站內 g≈9m/s²（重力仍在！）\n但人和站一起自由落體→正向力=0\n★「無重力」是「自由落體」的誤稱' },
+      { q: '連接體問題解法', a: '系統法：F=(m₁+m₂)a → 求 a\n隔離法：看單一物體 → 求張力\n★ 系統法求 a，隔離法求內力' },
+      { q: '【素養】安全帶的物理', a: '慣性→人繼續前進（牛頓一）\n安全帶→延長減速時間→F=Δp/Δt 變小\n寬帶→增大面積→壓力變小' },
+      { q: '拋體運動分解', a: '水平：等速 x=v₀cosθ·t\n鉛直：自由落體 y=v₀sinθ·t-½gt²\n★ 兩方向獨立' },
+      { q: '牛頓二的向量本質', a: 'ΣF⃗=ma⃗（向量方程式）\n分量：ΣFₓ=maₓ，ΣFᵧ=maᵧ\n★ 斜面問題要沿斜面分解' },
+      { q: '【素養】貓從高處落地', a: '翻正反射+終端速度(mg=bv²)\n著地四肢彎曲→延長減速時間\n★ 體型小→面積/體重比大→終端速度低' },
+    ],
+    quizzes: [
+      { q: '【頂標整合】蜂鳥翅尖可近似 y=A sin(2πft)，A=2 mm、f=120 Hz。其最大加速度最接近？', options: ['1.1×10^2 m/s²','1.1×10^3 m/s²','1.1×10^4 m/s²','1.1×10^5 m/s²'], answer: 1, explain: 'a_max=(2πf)^2A。\n(2π×120)^2×0.002≈1.14×10^3 m/s²。' },
+      { q: '【頂標整合】血管狹窄前半徑 2 mm、流速 0.40 m/s；狹窄處半徑 1 mm。若血液不可壓縮，狹窄處流速？', options: ['0.80 m/s','1.20 m/s','1.60 m/s','3.20 m/s'], answer: 2, explain: '連續方程 A1v1=A2v2，面積比=(2^2)/(1^2)=4。\nv2=4×0.40=1.60 m/s。' },
+      { q: '【頂標整合】同上題，ρ=1060 kg/m³，忽略高度差與黏滯，狹窄造成動壓增加 ΔP=1/2ρ(v2²-v1²) 最接近？', options: ['2.1×10^2 Pa','6.4×10^2 Pa','1.27×10^3 Pa','3.40×10^3 Pa'], answer: 2, explain: 'ΔP=0.5×1060×(1.6²-0.4²)\n=530×2.4=1272 Pa。' },
+      { q: '【頂標整合】60 kg 運動員由 0.8 m 高台落地，緩衝時間 0.04 s，取 g=10。平均地面支持力最接近？', options: ['3.0×10^3 N','4.8×10^3 N','6.6×10^3 N','8.0×10^3 N'], answer: 2, explain: '落地速率 v≈√(2gh)=4 m/s。\n淨衝量力 mΔv/Δt=60×4/0.04=6000 N（向上）。\n地面力=6000+mg=6600 N。' },
+      { q: '【頂標整合】有髓神經纖維節間距 1.2 mm，節點延遲 0.04 ms，節間傳導速率 80 m/s。整體傳導速率最接近？', options: ['8 m/s','14 m/s','22 m/s','40 m/s'], answer: 2, explain: '節間時間=0.0012/80=0.000015 s=0.015 ms。\n每節總時間≈0.015+0.04=0.055 ms。\n速度=1.2 mm/0.055 ms≈21.8 m/s。' },
+      { q: '【頂標整合】花粉粒質量 2×10^-9 kg，線性阻力係數 b=1×10^-7 N·s/m。終端速度 v_t=mg/b，取 g=10，v_t 為？', options: ['0.02 m/s','0.20 m/s','2.0 m/s','20 m/s'], answer: 1, explain: 'v_t=mg/b=(2×10^-9×10)/(10^-7)=0.20 m/s。' },
+      { q: '【頂標整合】顯微鏡 Abbe 解析度 d=0.61λ/NA。若 λ=550 nm，NA=1.25，d 最接近？', options: ['2.7×10^-7 m','5.5×10^-7 m','8.9×10^-7 m','1.3×10^-6 m'], answer: 0, explain: 'd=0.61×550 nm/1.25≈268 nm=2.68×10^-7 m。' },
+      { q: '【頂標整合】蝙蝠回聲往返時間 12 ms，聲速 340 m/s。獵物距離最接近？', options: ['1.02 m','2.04 m','3.40 m','4.08 m'], answer: 1, explain: '單程時間 t=0.012/2=0.006 s。\nd=vt=340×0.006=2.04 m。' },
+      { q: '【頂標整合】神經膜電容 C=1.0 μF，膜電位由 -70 mV 到 +30 mV。電荷變化量 |ΔQ|=C|ΔV| 為？', options: ['1×10^-8 C','1×10^-7 C','1×10^-6 C','1×10^-5 C'], answer: 1, explain: '|ΔV|=0.10 V，C=1×10^-6 F。\n|ΔQ|=1×10^-6×0.10=1×10^-7 C。' },
+      { q: '【頂標整合】離心機半徑 0.08 m，轉速 6000 rpm。向心加速度最接近？(ω=2πf)', options: ['3.15×10^3 m/s²','3.15×10^4 m/s²','3.15×10^5 m/s²','3.15×10^6 m/s²'], answer: 1, explain: 'f=6000/60=100 Hz，ω=2π×100≈628 rad/s。\na=ω²r≈628²×0.08≈3.15×10^4 m/s²。' },
+      { q: '【頂標整合】分子在細胞質中擴散係數 D=1×10^-9 m²/s，25 秒後一維均方根位移 x_rms=√(2Dt) 最接近？', options: ['2.24×10^-5 m','2.24×10^-4 m','2.24×10^-3 m','2.24×10^-2 m'], answer: 1, explain: 'x_rms=√(2×10^-9×25)=√(5×10^-8)\n≈2.24×10^-4 m（0.224 mm）。' },
+    ]
+  },
+  chemistry: {
+    name: '化學', icon: '🧪', color: 'green',
+    range: '學測分科頂標 × 生物奧林匹亞整合',
+    publisher: '龍騰版 第二冊（高一化學）',
+    flashcards: [
+      { q: '【生物素養】血紅素中的鐵離子', a: 'Fe²⁺ 能攜氧（鮮紅），Fe³⁺ 不能（暗紅）\n一氧化碳 CO 與 Fe²⁺ 的親和力是 O₂ 的 200 倍\n★ 這就是 CO 中毒的化學本質' },
+      { q: '電子組態與例外', a: '正常：1s→2s→2p→3s→3p→4s→3d\n例外：Cr=[Ar]3d⁵4s¹, Cu=[Ar]3d¹⁰4s¹\n★ 半滿和全滿 d 軌域特別穩定（IBO 級）' },
+      { q: '【生物素養】水的特殊性質', a: 'O 的電負度大→H₂O 為極性分子→氫鍵\n冰密度<水（氫鍵形成開放結構）\n比熱大→調節體溫、穩定氣候\n★ 生命之所以可能，全靠水的異常性質' },
+      { q: '離子鍵 vs 共價鍵的光譜', a: '電負度差>1.7→離子鍵（如NaCl=2.1）\n差<1.7→共價鍵（如HCl=0.9）\n★ 不是二元分類，是連續光譜！' },
+      { q: '【生物素養】光合作用的化學方程式', a: '6CO₂+6H₂O→C₆H₁₂O₆+6O₂\n莫耳比 6:6:1:6\n★ 產生1mol葡萄糖需6mol CO₂\n每年全球光合作用固定 ~1.2×10¹⁴ kg 碳' },
+      { q: '莫耳濃度計算', a: 'M = n/V（mol/L）\nn = 質量/分子量\n★ 頂標：溶液稀釋 M₁V₁=M₂V₂' },
+      { q: '路易斯結構的例外', a: '八隅體例外：\nBF₃（B只有6e⁻）缺電子\nPCl₅（P有10e⁻）擴展八隅體\n★ IBO級：d軌域參與→超過8電子' },
+      { q: '【生物素養】ATP 的高能磷酸鍵', a: 'ATP→ADP+Pi 釋放能量 30.5 kJ/mol\n磷酸根間的靜電排斥→高能\n★ 化學鍵能概念直接解釋生物能量代謝' },
+      { q: '週期表的週期律', a: '原子半徑：同週期→右減，同族→下增\n游離能：同週期→右增，同族→下減\n電負度：同週期→右增，同族→下減\n★ 頂標：解釋為何F電負度>O' },
+      { q: '【素養】海水的離子組成', a: 'Na⁺ 和 Cl⁻ 最多（鹹味來源）\nMg²⁺：海水提取鎂的工業原料\nCa²⁺：珊瑚骨骼 CaCO₃ 的來源\n★ 海洋酸化→CO₂↑→[H⁺]↑→珊瑚溶解' },
+      { q: '化學計量（限量試劑）', a: '反應物不一定按化學計量比混合\n用完的那個=限量試劑→決定產量\n★ 頂標：先算各反應物能產生多少產物\n取最小值' },
+      { q: '【生物素養】DNA 中的氫鍵', a: 'A=T（2條氫鍵），G≡C（3條氫鍵）\nGC含量高→DNA更穩定→熔點更高\n★ 嗜熱菌DNA的GC含量特別高' },
+    ],
+    quizzes: [
+      { q: '【頂標整合】血液緩衝可近似 HCO3-/H2CO3，pKa=6.1、pH=7.4。依 Henderson-Hasselbalch， [HCO3-]/[H2CO3] 最接近？', options: ['5','10','20','40'], answer: 2, explain: 'pH-pKa=1.3。\n[base]/[acid]=10^1.3≈20。' },
+      { q: '【頂標整合】ATP 水解標準自由能 ΔG°\'=-30.5 kJ/mol。若細胞中 Q=[ADP][Pi]/[ATP]=0.01，298K 時 ΔG 最接近？(RTlnQ≈2.48×ln0.01=-11.4)', options: ['-30.5 kJ/mol','-36.2 kJ/mol','-41.9 kJ/mol','-53.0 kJ/mol'], answer: 2, explain: 'ΔG=ΔG°\'+RTlnQ。\n=-30.5+(-11.4)=-41.9 kJ/mol。' },
+      { q: '【頂標整合】血液 pH 由 7.4 降到 7.1， [H+] 濃度約變為原本幾倍？', options: ['1.26 倍','2.0 倍','3.2 倍','10 倍'], answer: 1, explain: 'ΔpH=0.3，濃度比=10^0.3≈2。\n代表酸中毒時 [H+] 約倍增。' },
+      { q: '【頂標整合】酵素受競爭性抑制時，理論上最典型的動力學變化為何？', options: ['Vmax 降低、Km 不變','Vmax 不變、Km 增加','Vmax 增加、Km 降低','Vmax 與 Km 皆不變'], answer: 1, explain: '競爭性抑制可被高底物濃度克服，Vmax 不變；\n需更高底物達半速率，因此 Km 上升。' },
+      { q: '【頂標整合】某可電離側鏈 pKa=7.2。若環境 pH=7.2，去質子化/質子化比值最接近？', options: ['1:10','1:2','1:1','2:1'], answer: 2, explain: 'H-H 式：pH=pKa 時，[A-]=[HA]。\n故比值約 1:1。' },
+      { q: '【頂標整合】一段雙股 DNA 共 1000 bp，GC 含量 60%。此段 DNA 的氫鍵總數最接近？', options: ['2000','2400','2600','3000'], answer: 2, explain: 'GC=600 對，每對 3 鍵；AT=400 對，每對 2 鍵。\n總鍵數=600×3+400×2=2600。' },
+      { q: '【頂標整合】0.15 M NaCl 體液（視為完全解離，i=2）在 310K 的滲透壓 π 最接近？(R=0.082 L·atm·mol^-1·K^-1)', options: ['3.8 atm','5.2 atm','7.6 atm','12.7 atm'], answer: 2, explain: 'π=iMRT=2×0.15×0.082×310≈7.63 atm。' },
+      { q: '【頂標整合】組胺酸側鏈 pKa 約 6.0，在 pH 7.0 時其質子化比例最接近？', options: ['1%','9%','25%','50%'], answer: 1, explain: '質子化分率=1/(1+10^(pH-pKa))\n=1/(1+10)=1/11≈9.1%。' },
+      { q: '【頂標整合】某酵素 Vmax=120 μM/s，Km=30 μM。當 [S]=Km 時反應速率 v 為？', options: ['30 μM/s','40 μM/s','60 μM/s','90 μM/s'], answer: 2, explain: 'Michaelis-Menten 在 [S]=Km 時，v=Vmax/2。\n因此 v=60 μM/s。' },
+      { q: '【頂標整合】線粒體呼吸鏈中 1 分子 NADH 轉移 2 電子，若耦聯效率近似 4H+/ATP 且每 NADH 約泵 10H+，理論 ATP 產率最接近？', options: ['1.5','2.5','3.5','5.0'], answer: 1, explain: 'ATP≈10/4=2.5。\n這也是生物化學常用的 P/O 近似值。' },
+    ]
+  },
+  geography: {
+    name: '地理', icon: '🌍', color: 'amber',
+    range: '學測分科頂標 × 生物奧林匹亞整合',
+    publisher: '龍騰版 第二冊',
+    flashcards: [
+      { q: '【生態素養】GIS 在生態保育的應用', a: 'GIS 圖層疊合：棲地分布+開發區+水文\n→ 找出生態廊道斷裂點\n★ 石虎保育就是用 GIS 找出關鍵棲地' },
+      { q: 'GPS 與動物追蹤', a: 'GPS 頸圈追蹤動物遷徙路線\n至少 4 顆衛星定位\n★ 黑面琵鷺遷徙研究用 GPS 追蹤' },
+      { q: '遙測與環境變遷', a: 'NDVI（植被指數）：監測森林變化\n紅外光遙測：海水溫度→珊瑚白化\n★ 衛星遙測是大尺度生態研究的眼睛' },
+      { q: '等高線進階判讀', a: '等高線凸向低處=山脊（分水嶺）\n凸向高處=山谷（集水線）\n★ 頂標：河流沿山谷流，等高線呈V形' },
+      { q: '台灣板塊構造', a: '歐亞板塊+菲律賓海板塊碰撞\n北部：菲律賓海板塊隱沒\n南部：歐亞板塊隱沒\n★ 花東縱谷=板塊縫合帶' },
+      { q: '【素養】台灣水文與生態', a: '河川短急→沖積扇地形\n西部河川流量季節差異大\n★ 濕地生態系（如高美濕地）是候鳥棲息地' },
+      { q: '地圖投影的選擇', a: '航海→麥卡托（等角）\n面積統計→等積投影\n極區→方位投影\n★ 沒有完美投影→選擇取決於用途' },
+      { q: '【素養】熱島效應', a: '都市溫度>周邊鄉村\n原因：水泥吸熱、人工廢熱、缺綠地\n★ 都市綠化=生態跳板→連結破碎棲地' },
+    ],
+    quizzes: [
+      { q: '【頂標整合】山區等溫線隨高度每上升 100 m 降 0.6°C。若平均增溫 2.0°C，冷涼型物種等溫棲地需上移約多少？', options: ['120 m','200 m','333 m','500 m'], answer: 2, explain: '2.0°C ÷ (0.6°C/100m)=333 m。\n這是高山物種被迫上移的核心量化。' },
+      { q: '【頂標整合】遙測像元 NIR=0.62、Red=0.22。NDVI=(NIR-Red)/(NIR+Red) 最接近？', options: ['0.24','0.36','0.48','0.64'], answer: 2, explain: 'NDVI=(0.62-0.22)/(0.62+0.22)=0.40/0.84≈0.48。' },
+      { q: '【頂標整合】要建立石虎生態廊道，以下哪種 GIS 最小成本路徑權重設定最合理？', options: ['道路與建成區低阻力、森林高阻力','森林與河谷低阻力、高車流道路高阻力','海拔越高阻力越低，不考慮土地利用','所有地物等權重'], answer: 1, explain: '目標是連接低干擾棲地，應讓森林與河谷成本低，\n道路與高人為干擾區成本高。' },
+      { q: '【頂標整合】比例尺 1:25000 地圖上，GPS 誤差 ±5 m 相當於圖上約多少 mm？', options: ['0.02 mm','0.2 mm','2.0 mm','20 mm'], answer: 1, explain: '5 m=500 cm，圖上長度=500/25000=0.02 cm=0.2 mm。' },
+      { q: '【頂標整合】同面積保護區設計中，哪一種通常邊緣效應最小、對森林內生物最有利？', options: ['狹長帶狀','高度破碎多小塊','近圓形單一大塊','沿公路線性分布'], answer: 2, explain: '近圓形在同面積下周長最短，邊界/面積比最低，\n核心棲地比例最高。' },
+      { q: '【頂標整合】集水區 5 km²，暴雨 120 mm。若逕流係數由 0.35 升至 0.55，新增逕流量最接近？', options: ['1.2×10^4 m³','6.0×10^4 m³','1.2×10^5 m³','6.0×10^5 m³'], answer: 2, explain: 'ΔC=0.20，雨深 0.12 m，面積 5×10^6 m²。\nΔV=0.20×0.12×5×10^6=1.2×10^5 m³。' },
+      { q: '【頂標整合】某海域連續 4 週海溫異常 +1.5°C，估算 Degree Heating Weeks 最接近？', options: ['1.5','4.0','6.0','10.5'], answer: 2, explain: 'DHW 近似異常溫度積分：1.5×4=6.0 °C-weeks。\nDHW 越高，珊瑚白化風險越大。' },
+      { q: '【頂標整合】下列哪種監測組合最能早期偵測河口生物多樣性崩跌？', options: ['只看年平均氣溫','土地利用變遷 + eDNA + 葉綠素遙測','只看人口成長率','只做 10 年一次實地調查'], answer: 1, explain: '棲地壓力、群集訊號與水體生產力需同時追蹤，\n多源資料融合才符合高階素養的系統診斷。' },
+    ]
+  },
+  history: {
+    name: '歷史', icon: '📜', color: 'red',
+    range: '學測分科頂標 × 生物奧林匹亞整合',
+    publisher: '三民版 第二冊',
+    flashcards: [
+      { q: '【素養】一手史料的判斷', a: '關鍵：是否為「事件當時」產生\n★ 荷蘭東印度公司的帳冊→一手\n現代歷史學者的論文→二手\n考古出土的陶片→一手' },
+      { q: '多元史觀的實踐', a: '荷蘭人看鄭成功=侵略者\n漢人看鄭成功=民族英雄\n原住民看鄭成功=新殖民者\n★ 頂標：同一事件有多種「正確」解讀' },
+      { q: '【生物素養】原住民的生態智慧', a: '南島語族的里山概念\n輪耕制度→讓土地休息→永續\n★ 現代生態學驗證了傳統知識的科學性' },
+      { q: 'VOC 的商業帝國', a: '荷蘭東印度公司=世界第一間股份公司\n壟斷香料貿易→殖民台灣\n在台灣：蔗糖+鹿皮出口\n★ 梅花鹿因此幾乎滅絕（生態史觀）' },
+      { q: '鄭氏的土地制度', a: '軍屯制：軍隊自給自足\n引入漢人大規模開墾\n★ 改變台灣土地利用→平原生態系被農田取代' },
+      { q: '清領前期的社會衝突', a: '三年一反的原因：\n①官員輪調不用心 ②法律不健全\n③漢番、閩客、漳泉對立\n★ 頂標：分析結構性因素而非單一事件' },
+      { q: '番界政策的生態影響', a: '清代劃番界→客觀上保護了山林\n開山撫番後→大規模伐木開墾\n★ 政策的非預期後果（歷史素養）' },
+      { q: '歷史因果鏈分析法', a: '不只記「發生什麼」\n要問「為什麼」→「導致什麼」\n★ 大航海→VOC→殖民台灣→鹿皮貿易→梅花鹿滅絕' },
+    ],
+    quizzes: [
+      { q: '【頂標整合】若要重建 17 世紀台灣梅花鹿族群變遷，下列哪組「一手證據鏈」最具方法論強度？', options: ['教科書摘要 + 旅遊部落格','VOC 獵鹿帳冊 + 考古鹿骨年代 + 花粉岩芯','近代論文結論 + 網路百科','口述傳說單一來源'], answer: 1, explain: '高階歷史研究需多源交叉驗證：文字、考古、生態代理指標。\nVOC 帳冊提供量化，鹿骨與花粉提供環境背景。' },
+      { q: '【頂標整合】哥倫布大交換對生態史最關鍵的結構性衝擊為何？', options: ['只改變歐洲飲食','跨洲物種與病原交換重組生態網絡','僅造成貴金屬流動','只影響語言文化'], answer: 1, explain: '作物、家畜、病原與入侵種同步移動，\n改變族群存活、土地利用與帝國擴張路徑。' },
+      { q: '【頂標整合】若 VOC 年獵鹿量約 18 萬頭，而保守估計可持續採捕上限約 10 萬頭，最合理推論是？', options: ['屬永續管理','短期出口繁榮但高機率資源崩潰','與生態無關','獵量不足以影響族群'], answer: 1, explain: '採捕長期高於可持續上限，典型結果是族群下降與貿易衰退。\n此題要求把歷史數據轉為生態承載判讀。' },
+      { q: '【頂標整合】清代番界政策與後期開山撫番，何者最符合環境史的「非預期後果」分析？', options: ['兩者都只帶來保育效果','前期限制入山有保林效果，後期開山導致伐林擴張','兩者皆與山林無關','後期政策減少開發'], answer: 1, explain: '同一治理目標在不同時期會產生相反生態結果，\n是環境史分析政策效果的核心。' },
+      { q: '【頂標整合】面對「鄭成功是民族英雄還是殖民者」爭議，下列哪種作答最符頂標歷史素養？', options: ['只採單一官方敘事','以漢人視角為唯一標準','並列荷蘭、漢人、原住民立場並比較證據基礎','拒絕所有史料'], answer: 2, explain: '頂標作答不是折衷口號，而是「立場 + 證據 + 脈絡」三層比較。\n多元史觀不等於相對主義。' },
+      { q: '【頂標整合】研究殖民時期瘧疾控制與勞動動員，下列哪種因果鏈最完整？', options: ['醫療進步與經濟無關','公共衛生改善生存率，改變勞動供給與殖民治理能力','疾病只影響個人健康','歷史不能做因果分析'], answer: 1, explain: '疾病負擔會透過人口結構與勞動市場，\n回饋到國家能力與基礎建設擴張。' },
+      { q: '【頂標整合】下列何者最能區分「史料」與「史學詮釋」？', options: ['史料一定客觀，詮釋一定主觀','史料是原始痕跡，詮釋是基於方法與理論的重建','兩者完全相同','詮釋不需要史料'], answer: 1, explain: '頂標關鍵在於：承認史料有限性，同時要求可檢證的推論鏈。\n這也是歷史學作為學科的核心。' },
+      { q: '【頂標整合】若在同一地層發現稻作花粉上升、木炭微粒增加、鹿骨比例下降，最合理的歷史生態解釋是？', options: ['自然環境未受人類影響','農墾與燃燒擴張，棲地壓縮導致大型哺乳類下降','鹿骨下降代表氣候轉冷','僅能證明火山噴發'], answer: 1, explain: '三項代理指標共同指向人類土地利用強化。\n此題考跨證據整合而非單點背誦。' },
+    ]
+  },
+  civics: {
+    name: '公民', icon: '⚖️', color: 'indigo',
+    range: '學測分科頂標 × 生物奧林匹亞整合',
+    publisher: '龍騰版 第二冊',
+    flashcards: [
+      { q: '【素養】基因改造食品的人權議題', a: '知的權利→標示義務（受益權）\n健康權 vs 經濟發展權的衝突\n★ 比例原則：管制手段是否適當？' },
+      { q: '比例原則的三層次', a: '①適當性：手段能達成目的嗎？\n②必要性：有沒有侵害更小的方式？\n③衡量性：得到的利益>犧牲的權利？\n★ 頂標：用實際案例套用三層次分析' },
+      { q: '【素養】動物實驗的法律爭議', a: '動物保護法 vs 科學研究自由\n3R原則：Replace替代, Reduce減量, Refine精緻化\n★ 公民素養：權利衝突時如何平衡？' },
+      { q: '法律保留原則', a: '限制人民權利→必須有法律依據\n行政機關不能自行限制\n★ 層級化保留：越重要的權利→越高位階的法律' },
+      { q: '我國釋憲制度', a: '司法院大法官→憲法法庭\n人民窮盡救濟途徑後可聲請\n★ 頂標：釋字如何影響法律發展' },
+      { q: '【素養】環境權的憲法基礎', a: '非明文基本權→由憲法第22條概括\n環境權vs開發權的衝突\n★ 中科三期案：環評vs經濟發展' },
+      { q: '公民不服從的要件', a: '①非暴力②公開③基於正義④願承擔後果\n★ 與一般違法的區別：有道德訴求\n類比：甘地鹽行、金恩遊行' },
+      { q: '多數決的限制', a: '基本人權不能用多數決侵害\n少數族群權利需特別保障\n★ 頂標：民主不等於多數暴力' },
+    ],
+    quizzes: [
+      { q: '【頂標整合】政府擬全面禁止胚胎基因編輯研究。若以比例原則審查，第一步最核心的問題是？', options: ['是否符合民調多數','手段是否能促進公共目的（適當性）','是否由行政機關公布','是否能永久禁止爭議'], answer: 1, explain: '比例原則審查順序：適當性→必要性→衡量性。\n先問「此禁令能否有效保護目標法益」。' },
+      { q: '【頂標整合】下列何者最符合生醫資料庫的「知情同意」強化版本？', options: ['一次簽署永久使用，不可撤回','動態同意：可分層授權、可追蹤用途、可撤回','只要去識別化就不需同意','研究機構可任意二次利用'], answer: 1, explain: '生醫資料具高再識別風險，動態同意兼顧研究彈性與個人自主。\n屬高階資料治理素養。' },
+      { q: '【頂標整合】疫情期間以手機定位追蹤接觸者，若要符合法治國下最小侵害，何者較適當？', options: ['無期限保存所有軌跡','僅蒐集必要期間與必要欄位，目的達成即刪除','跨部門任意共享原始資料','追蹤結果不需救濟管道'], answer: 1, explain: '必要性與衡量性要求：資料最小化、目的限制、期限限制、救濟機制。\n這是隱私與公共衛生平衡的關鍵。' },
+      { q: '【頂標整合】針對可能被濫用的雙用途生物研究（Dual-use），下列治理最符合民主法治？', options: ['完全不公開，僅行政決定','完全自由，無任何審查','風險分級審查 + 研究倫理委員會 + 透明問責','由市場自行調整即可'], answer: 2, explain: '雙用途研究需兼顧學術自由與公共安全。\n分級審查與外部監督可降低濫用風險。' },
+      { q: '【頂標整合】保險公司以基因檢測結果拒保，最直接牽涉的憲法核心價值為何？', options: ['職業自由優先','契約自由絕對化','平等權與人格尊嚴保障','地方自治優先'], answer: 2, explain: '基因資訊可能造成結構性歧視，\n需以平等權與人格尊嚴作為審查核心。' },
+      { q: '【頂標整合】「未來世代環境權」在我國憲法體系中最常透過何種方式論證？', options: ['僅能靠民意，不涉法律','以第22條概括基本權結合第23條比例原則','第8條人身自由可直接涵蓋全部環境議題','完全排除司法審查'], answer: 1, explain: '環境權多採概括基本權路徑，再以比例原則檢驗國家限制或怠惰。\n屬憲法實務高頻論證模式。' },
+      { q: '【頂標整合】動物實驗計畫審查時，哪一項最能體現 3R 與程序正義？', options: ['研究者自行宣告必要即可','先證明無替代法，再要求樣本數統計最小化與疼痛緩解方案','只看經費多寡','只看是否能發表論文'], answer: 1, explain: 'Replace、Reduce、Refine 需具體化為可檢證審查指標。\n程序正義在於有標準、有紀錄、可追責。' },
+      { q: '【頂標整合】若 AI 生物監測系統誤將無辜者標示為高風險，法治國最必要的補救機制是？', options: ['系統商自行處理即可','當事人可近用理由、申訴與更正資料','只公告模型準確率','以機器決策替代全部人工審查'], answer: 1, explain: '正當法律程序要求可解釋、可救濟、可更正。\n否則將形成不可挑戰的演算法權力。' },
+    ]
+  },
+  chinese: {
+    name: '國文', icon: '📖', color: 'rose',
+    range: '學測分科頂標 × 生物奧林匹亞整合',
+    publisher: '翰林版 第二冊',
+    flashcards: [
+      { q: '【跨域素養】科學寫作中的修辭', a: '達爾文：「自然界中沒有飛躍」→借喻\n科普文章常用譬喻讓抽象概念具象化\n★ 好的科學傳播=文學技巧+精準用詞' },
+      { q: '文言文「之」的四種用法', a: '①代詞：取之（它）②助詞：吾之友（的）\n③動詞：之廣陵（到...去）④語助：久之（無義）\n★ 頂標：從上下文判斷，不能死背' },
+      { q: '譬喻三種的區別', a: '明喻：A 如/像 B（有喻詞）\n暗喻：A 是 B（省略喻詞）\n借喻：直接說 B（A都不出現）\n★ 「人生如夢」明喻→「人生一場夢」暗喻→「夢醒了」借喻' },
+      { q: '排比 vs 對偶 vs 類疊', a: '排比：≥3句結構相似\n對偶：2句字數相同、結構對稱\n類疊：重複相同字詞\n★ 頂標：「風聲雨聲讀書聲」=排比+類疊' },
+      { q: '【素養】文本結構分析', a: '起承轉合不是死套路\n重點是：作者的論證邏輯是什麼？\n★ 頂標閱讀：找出「主旨→論據→結論」' },
+      { q: '虛詞「而」的判斷法', a: '看前後句關係：\n順承=而且→「學而時習之」\n轉折=但是→「學而不思則罔」\n修飾=地→「拱而立」' },
+      { q: '書信格式（應用文）', a: '長輩：「鈞鑒」「敬請 福安/教安」\n平輩：「台鑒」「順頌 時祺」\n★ 頂標：分辨情境用正確格式' },
+      { q: '【素養】古文的生態觀', a: '「不違農時，穀不可勝食也」→永續農業\n「數罟不入洿池」→生態保育\n★ 孟子的主張=現代生態學的「最大持續產量」' },
+    ],
+    quizzes: [
+      { q: '【頂標整合】句子「基因編輯如同在生命手稿上校對」主要使用何種修辭？', options: ['借代','明喻','互文','設問'], answer: 1, explain: '有「如同」明確喻詞，屬明喻。\n此類科普語句常用明喻降低抽象門檻。' },
+      { q: '【頂標整合】「其所以能久者，以不竭其源也」中「其」「以」語法功能最適當的是？', options: ['其=代詞；以=介詞，表憑藉原因','其=語助詞；以=連詞，表轉折','其=疑問代詞；以=動詞，表認為','其=指示詞；以=語氣詞'], answer: 0, explain: '其指代前文對象；以引出原因或憑藉。\n高階文言重點在句法功能判讀。' },
+      { q: '【頂標整合】若論說文主張「保育政策應以監測數據為準」，最能支撐主張的論證方式是？', options: ['純情緒抒發','權威引述但無數據','提出長期時序資料並比較政策前後差異','只舉單一個案經驗'], answer: 2, explain: '素養題重視「主張-證據-推論」鏈。\n時序與對照可提高論證的可檢證性。' },
+      { q: '【頂標整合】下列哪個改寫最符合學術中文的精確性與可檢驗性？', options: ['這個方法超猛，效果非常好','此法應該不錯，大家都這樣說','在相同條件下，實驗組存活率較對照組提高 18%','我們直覺它有效'], answer: 2, explain: '學術表述需可量化、可重現、可比較。\n以明確條件與數據呈現最符頂標寫作。' },
+      { q: '【頂標整合】「數罟不入洿池，魚鼈不可勝食也」最接近現代哪種論證結構？', options: ['先下結論、無理由','提出限制措施→說明資源可持續的因果推論','純價值判斷，無事實基礎','以權威壓制反方'], answer: 1, explain: '先提出政策約束，再推論長期資源可得性，\n屬因果與規範結合的政策論證。' },
+      { q: '【頂標整合】「生態系是一張被拉緊的網，拔掉一結，整體都會鬆動」中「網」的修辭性質為何？', options: ['借喻','排比','層遞','引用'], answer: 0, explain: '直接以「網」代指生態系統關聯，\n本體未明說，屬借喻。' },
+      { q: '【頂標整合】下列何者最可能是科普文章的邏輯謬誤？', options: ['區分相關與因果','用對照組驗證假說','僅因兩事件同時出現就斷言因果','揭露樣本限制'], answer: 2, explain: '同時發生不等於因果。\n頂標閱讀常考「相關-因果」辨識。' },
+      { q: '【頂標整合】若要總結一段生醫爭議文本，哪個摘要最符合「忠實原文 + 結構清晰」原則？', options: ['刪去反方論點，只留立場','改寫成情緒口號','交代議題背景、雙方主張、證據強弱與仍待釐清處','僅摘錄最華麗句子'], answer: 2, explain: '高階摘要不是縮短文字而已，\n而是重建論證結構與證據位階。' },
+    ]
+  },
+  english: {
+    name: '英文', icon: '🔤', color: 'teal',
+    range: '學測分科頂標英語 × 生醫素養',
+    publisher: '龍騰版 B2（第二冊）',
+    flashcards: [
+      { q: '【素養】科學論文的現在完成式', a: 'Studies have shown that... (研究已顯示)\n用完成式=強調「到目前為止」的累積結果\n★ 學術寫作中完成式頻率極高' },
+      { q: 'have been to vs have gone to', a: 'have been to=去過（人已回來）\nhave gone to=去了（人還在那裡）\n★ He has gone to Paris.=他人在巴黎' },
+      { q: '關係代名詞的省略', a: '受格時可省略：The man (whom) I met...\n主格不能省：The man who came...\n★ 學測常考省略後的句子分析' },
+      { q: '分詞構句', a: '主詞相同時簡化附屬子句\nBecause he was tired, he...→Being tired, he...\n★ 頂標：V-ing=主動/進行，p.p.=被動' },
+      { q: 'although vs despite', a: 'although + S+V（子句）\ndespite + N/V-ing（介係詞）\n★ Although it rained / Despite the rain' },
+      { q: '假設語氣（與現在事實相反）', a: 'If + S + were/V-ed, S + would/could + V\nIf I were you, I would study harder.\n★ be動詞一律用 were（不分人稱）' },
+      { q: '【素養】科學閱讀的關鍵字', a: 'hypothesis=假說, evidence=證據\nspecies=物種, organism=有機體\nhabitat=棲地, ecosystem=生態系\n★ 學測科普閱讀的核心詞彙' },
+      { q: '倒裝句', a: 'Not only + 倒裝, but also + 正常\nNot only does he study hard, but...\n★ 否定副詞開頭→助動詞提前' },
+    ],
+    quizzes: [
+      { q: '【Top-tier Integrated】The ethics committee recommended that every embryo sample ___ anonymized before sequencing.', options: ['is','was','be','been'], answer: 2, explain: 'After verbs like recommend/suggest, formal English uses the mandative subjunctive: base form be.' },
+      { q: '【Top-tier Integrated】Cells ___ to chronic hypoxia showed a significant shift in metabolic pathways.', options: ['expose','exposing','exposed','to expose'], answer: 2, explain: 'The noun cells receives the action, so a reduced passive relative clause is needed: cells exposed to ...' },
+      { q: '【Top-tier Integrated】Only after the control group was introduced ___ the researchers identify the confounding variable.', options: ['the researchers identified','did the researchers identify','they identified','had the researchers identified'], answer: 1, explain: 'Negative/restrictive adverbials at sentence start trigger inversion: Only after ... did + subject + verb.' },
+      { q: '【Top-tier Integrated】The mutation is rare; ___, its phenotypic impact is substantial.', options: ['therefore','nevertheless','for example','similarly'], answer: 1, explain: 'The sentence expresses contrast, so nevertheless is the best logical connector.' },
+      { q: '【Top-tier Integrated】Had it not been for the intracellular buffer system, the enzyme ___ at physiological temperature.', options: ['denatures','would denature','would have denatured','had denatured'], answer: 2, explain: 'This is an inverted third conditional (past unreal): Had it not been..., would have + p.p.' },
+      { q: '【Top-tier Integrated】Which sentence is grammatically best for academic style?', options: ['Data was collected from three wetlands, it shows a decline.', 'Data collected from three wetlands show a decline in diversity.', 'Data which collecting from three wetlands show decline.', 'Data were collected from three wetlands showing are decline.'], answer: 1, explain: 'Data as plural noun with clear reduced relative clause is the most acceptable academic construction here.' },
+      { q: '【Top-tier Integrated】Neither the sequencing depth nor the final interpretation ___ free from uncertainty.', options: ['are','is','were','be'], answer: 1, explain: 'With neither...nor..., agreement usually follows the nearer subject. Final interpretation is singular, so is.' },
+      { q: '【Top-tier Integrated】To avoid overstating causality, the best revision is: \"The findings ___ suggest a possible regulatory role.\"', options: ['prove','must','may','inevitably'], answer: 2, explain: 'Academic hedging uses modals such as may to mark uncertainty and avoid causal overclaim.' },
+    ]
+  },
+  biology: {
+    name: '生物奧林匹亞', icon: '🧬', color: 'emerald',
+    range: 'IBO進階 × 學測分科頂標跨域',
+    publisher: '奧林匹亞整合自編題庫（第二冊延伸）',
+    flashcards: [
+      { q: '細胞膜的流體鑲嵌模型', a: '磷脂雙層+蛋白質（鑲嵌/周邊）+膽固醇\n流體性：37°C膜具流動性\n★ 膽固醇=穩定劑：高溫減流動，低溫防凝固' },
+      { q: 'DNA 複製的方向性', a: '5\'→3\' 方向合成（DNA聚合酶只能3\'端加）\n領先股=連續合成\n延遲股=岡崎片段→DNA連接酶接合\n★ 端粒酶(telomerase)解決末端複製問題' },
+      { q: '光合作用兩階段', a: '光反應（類囊體膜）：H₂O→O₂+ATP+NADPH\n暗反應/Calvin循環（基質）：CO₂→G3P→葡萄糖\n★ C3/C4/CAM 是不同固碳策略的演化適應' },
+      { q: '有絲分裂 vs 減數分裂', a: '有絲：1次分裂→2個2n（體細胞）\n減數：2次分裂→4個n（配子）\n★ 減數I的聯會+互換=遺傳多樣性的來源' },
+      { q: '孟德爾遺傳的延伸', a: '上位基因(epistasis)：一基因蓋過另一基因\n多基因遺傳：膚色、身高（連續變異）\n★ Hardy-Weinberg：p²+2pq+q²=1（平衡條件）' },
+      { q: '族群生態學', a: '邏輯斯諦成長：dN/dt=rN(1-N/K)\nK=承載量, r=內在增長率\n★ r策略(多生少養) vs K策略(少生多養)' },
+      { q: '免疫系統', a: '先天免疫：巨噬細胞、自然殺手細胞、發炎\n後天免疫：T細胞(細胞免疫)+B細胞(體液免疫)\n★ MHC-I(所有有核細胞) vs MHC-II(APC)' },
+      { q: '神經傳導', a: '靜止電位 -70mV（Na⁺/K⁺幫浦）\n動作電位：去極化→Na⁺內流→+30mV\n再極化→K⁺外流→回到-70mV\n★ 全有全無律+跳躍傳導(有髓鞘)' },
+      { q: '呼吸作用完整路徑', a: '糖解(細胞質)→丙酮酸→乙醯CoA\n→克氏循環(粒線體基質)→電子傳遞鏈(內膜)\n1 glucose→最多38 ATP（真核約30-32）\n★ 化學滲透假說：H⁺梯度驅動ATP合成酶' },
+      { q: '植物激素', a: '生長素(auxin)：向光性、頂芽優勢\n吉貝素(GA)：促進莖伸長、打破休眠\n細胞分裂素(CK)：促進分裂、延緩老化\n離層酸(ABA)：關閉氣孔、休眠\n乙烯：催熟、落葉' },
+      { q: '生態系能量流動', a: '10%法則：每個營養階層只傳遞~10%能量\n生產者→初級消費者→次級→三級\n★ 為什麼頂級掠食者數量最少？能量金字塔' },
+      { q: 'PCR 原理', a: '變性(95°C)→黏合(55°C)→延伸(72°C)\nTaq聚合酶（耐熱→來自嗜熱菌）\nn次循環→2ⁿ倍擴增\n★ 等比數列在分子生物學的應用！' },
+    ],
+    quizzes: [
+      { q: '【IBO整合】某隱性疾病患病率為 1/2500（q²）。在 Hardy-Weinberg 下，帶因者頻率 2pq 最接近？', options: ['0.4%','2.0%','3.9%','7.8%'], answer: 2, explain: 'q=√(1/2500)=0.02，p=0.98。\n2pq=2×0.98×0.02=0.0392≈3.9%。' },
+      { q: '【IBO整合】測交後代 600 株中有 18 株重組型。兩基因圖譜距離最接近？', options: ['1 cM','3 cM','9 cM','18 cM'], answer: 1, explain: '重組率=18/600=0.03=3%。\n基因距離約 3 cM。' },
+      { q: '【IBO整合】某酵素 Km=5 μM，當 [S]=5 μM 時測得 v=24。其 Vmax 為何？', options: ['24','36','48','60'], answer: 2, explain: '當 [S]=Km 時，v=Vmax/2。\n故 Vmax=48。' },
+      { q: '【IBO整合】37°C 時 K+ 的 Nernst 近似式 E=61log([out]/[in]) mV。若 [K+]in=140 mM、[K+]out=14 mM，E_K 約為？', options: ['+61 mV','0 mV','-61 mV','-122 mV'], answer: 2, explain: 'log(14/140)=log(0.1)=-1。\nE_K=61×(-1)=-61 mV。' },
+      { q: '【IBO整合】1 分子棕櫚酸（C16:0）完全氧化，現代 P/O 估算 ATP 產量最接近？', options: ['64','92','106','129'], answer: 2, explain: 'β氧化與 TCA 合計約 108 ATP，扣活化成本 2 ATP。\n淨產量約 106 ATP。' },
+      { q: '【IBO整合】qPCR 標準曲線斜率 -3.6，效率 E=10^(-1/slope)-1。效率最接近？', options: ['0.62','0.75','0.89','1.05'], answer: 2, explain: 'E=10^(0.2778)-1≈1.89-1=0.89（89%）。' },
+      { q: '【IBO整合】在下列情境中，遺傳漂變影響最顯著的是？', options: ['10^7 大族群，隨機交配','50 隻創始者建立孤島族群','強烈方向性天擇主導','高基因流入的連續族群'], answer: 1, explain: '漂變強度與有效族群大小成反比。\n小族群與創始者效應最明顯。' },
+      { q: '【IBO整合】病毒抗原被樹突細胞攝入後，活化初始 CD8 T 細胞最關鍵機制為何？', options: ['MHC-II 常規呈現','交叉呈現至 MHC-I','僅靠 B 細胞抗體','補體直接活化 CD8'], answer: 1, explain: '外源抗原經交叉呈現進入 MHC-I 路徑，\n是啟動初始 CD8 T 細胞的重要機制。' },
+      { q: '【IBO整合】族群成長方程 dN/dt=rN(1-N/K)，r=0.4、K=1000、N=250。當下 dN/dt 為？', options: ['25','50','75','100'], answer: 2, explain: 'dN/dt=0.4×250×(1-0.25)=100×0.75=75。' },
+      { q: '【IBO整合】中性等位基因 A 初始頻率 p=0.10。其最終固定機率最接近？', options: ['0.01','0.10','0.25','0.50'], answer: 1, explain: '中性理論下固定機率≈初始頻率 p。\n因此為 0.10。' },
+      { q: '【IBO整合】C4 植物相較 C3，在每固定 1 分子 CO2 的 ATP 額外成本最接近？', options: ['0','1','2','4'], answer: 2, explain: 'C4 濃縮機制需額外 ATP 再生 PEP，\n約多消耗 2 ATP/CO2。' },
+      { q: '【IBO整合】有髓神經傳導速度提升的主要生物物理原因是？', options: ['降低膜電阻、提高電容','提高膜電阻、降低膜電容','只增加軸突直徑，其他不變','完全由突觸數量決定'], answer: 1, explain: '髓鞘使膜漏電減少（Rm↑）且充放電負擔下降（Cm↓），\n提升長度常數與傳導效率。' },
+    ]
+  }
+};
+
+const DAY_MS = 86400000;
+const EXAM_DATE = new Date('2026-03-26T00:00:00+08:00');
+const SCORE_KEY = 'exam-scores';
+const SUBJECT_ENTRIES = Object.entries(SUBJECTS);
+const COLOR_MAP = { blue:'from-blue-500 to-blue-600', purple:'from-purple-500 to-purple-600', green:'from-green-500 to-green-600', amber:'from-amber-500 to-amber-600', red:'from-red-500 to-red-600', indigo:'from-indigo-500 to-indigo-600', rose:'from-rose-500 to-rose-600', teal:'from-teal-500 to-teal-600', emerald:'from-emerald-500 to-emerald-600' };
+const BG_MAP = { blue:'bg-blue-50 border-blue-200', purple:'bg-purple-50 border-purple-200', green:'bg-green-50 border-green-200', amber:'bg-amber-50 border-amber-200', red:'bg-red-50 border-red-200', indigo:'bg-indigo-50 border-indigo-200', rose:'bg-rose-50 border-rose-200', teal:'bg-teal-50 border-teal-200', emerald:'bg-emerald-50 border-emerald-200' };
+const EXAM_SCOPE_B2 = {
+  chinese: [
+    { exam: '第一次段考', scope: 'L1-4 + 古今閱讀22-28回 + 大滿貫10-12回（P118-P154）' },
+    { exam: '第二次段考', scope: 'L5-8 + 古今閱讀29-35回 + 大滿貫13-15回（P157-P177）' },
+    { exam: '第三次段考', scope: 'L9-12 + 古今閱讀36-42回 + 大滿貫16-18回（P178-P194）' },
+  ],
+  english: [
+    { exam: '第一次段考', scope: '課本 B2：U1、U3 全；U2 單片句；Live ABC 三月份' },
+    { exam: '第二次段考', scope: '課本 B2：U5、U6 全；U4 單片句；Live ABC 四月份' },
+    { exam: '第三次段考', scope: '課本 B2：U7、U9 全；U8 單片句；Live ABC 六月份' },
+  ],
+  math: [
+    { exam: '第一次段考', scope: '第1、2章' },
+    { exam: '第二次段考', scope: '第3章' },
+    { exam: '第三次段考', scope: '第4章' },
+  ],
+  physics: [
+    { exam: '第一次段考', scope: '1-1～2-3' },
+    { exam: '第二次段考', scope: '3-1～4-4-3' },
+    { exam: '第三次段考', scope: '4-4-1～4-5' },
+  ],
+  chemistry: [
+    { exam: '第一次段考', scope: '1-1～1-5' },
+    { exam: '第二次段考', scope: '2-1～2-4' },
+    { exam: '第三次段考', scope: '3-1～4-4' },
+  ],
+  geography: [
+    { exam: '第一次段考', scope: 'Ch1～Ch3' },
+    { exam: '第二次段考', scope: 'Ch4' },
+    { exam: '第三次段考', scope: 'Ch5～Ch7' },
+  ],
+  history: [
+    { exam: '第一次段考', scope: '序論、1-1～2-1' },
+    { exam: '第二次段考', scope: '2-2～3-2' },
+    { exam: '第三次段考', scope: '4-1～5-2' },
+  ],
+  civics: [
+    { exam: '第一次段考', scope: 'Ch1～2' },
+    { exam: '第二次段考', scope: 'Ch3～4' },
+    { exam: '第三次段考', scope: 'Ch5～6' },
+  ],
+  biology: [
+    { exam: '第一次段考', scope: '細胞與遺傳基礎（108課綱素養整合）' },
+    { exam: '第二次段考', scope: '生理與代謝調控（108課綱素養整合）' },
+    { exam: '第三次段考', scope: '生態與演化整合（108課綱素養整合）' },
+  ],
+};
+
+const QUIZ_SCOPE_INDEX_B2 = {
+  math: [
+    [0, 1, 2, 5, 9],
+    [3, 4, 6, 8],
+    [7, 8, 9, 6],
+  ],
+  physics: [
+    [0, 1, 2, 7, 8],
+    [3, 4, 8, 10, 1],
+    [5, 6, 9, 10, 3],
+  ],
+  chemistry: [
+    [0, 2, 4, 7, 9],
+    [1, 3, 5, 8],
+    [6, 8, 9, 1],
+  ],
+  geography: [
+    [0, 1, 3, 4],
+    [2, 5, 6],
+    [4, 6, 7, 1],
+  ],
+  history: [
+    [0, 1, 2, 4],
+    [3, 5, 6],
+    [2, 6, 7, 4],
+  ],
+  civics: [
+    [0, 1, 2, 4],
+    [3, 5, 6],
+    [2, 6, 7, 4],
+  ],
+  chinese: [
+    [0, 1, 2, 3],
+    [4, 5, 6],
+    [3, 6, 7, 2],
+  ],
+  english: [
+    [0, 1, 2, 3],
+    [4, 5, 6],
+    [2, 6, 7, 4],
+  ],
+  biology: [
+    [0, 1, 2, 3],
+    [4, 5, 6, 7],
+    [8, 9, 10, 11],
+  ],
+};
+
+const NOTE_UPGRADE_108 = {
+  math: {
+    focus: '符號表徵 → 模型建構 → 推理驗證',
+    points: [
+      '每題先寫「已知/未知/限制條件」，避免代數誤植。',
+      '把情境轉成函數或機率模型，再做計算，不直接硬算。',
+      '結尾一定做邊界檢核（值域、單位、極端情況）。',
+    ],
+    template: '題型：____\n關鍵條件：____\n模型式：____\n結論：____（含單位/合理性）',
+  },
+  physics: {
+    focus: '現象解釋 → 受力與守恆 → 量化估算',
+    points: [
+      '先畫受力圖或能量流程，再列方程式。',
+      '把「近似假設」寫出來（忽略摩擦、等速流、理想氣體）。',
+      '答案附物理意義：方向、量級、是否符合直覺。',
+    ],
+    template: '現象：____\n圖像：受力/能量圖\n方程：____\n估算：____\n物理解釋：____',
+  },
+  chemistry: {
+    focus: '粒子觀點 → 平衡觀點 → 系統觀點',
+    points: [
+      '把化學式、電荷、莫耳比三者一起寫，避免只背步驟。',
+      '酸鹼與平衡題先判主導反應，再用近似簡化。',
+      '生化題補上「在細胞條件下」的自由能或濃度意義。',
+    ],
+    template: '主反應：____\n已知濃度/常數：____\n近似條件：____\n計算結果：____\n化學意義：____',
+  },
+  geography: {
+    focus: '空間尺度 → 資料判讀 → 公共議題',
+    points: [
+      '先定尺度（地方/區域/全球）再選指標（NDVI、DHW、逕流）。',
+      '地圖題優先看圖例、比例尺、投影，不先看選項。',
+      '結論需含政策面：風險、利害關係人、可行治理。',
+    ],
+    template: '議題：____\n空間尺度：____\n證據圖層：____\n推論：____\n治理建議：____',
+  },
+  history: {
+    focus: '史料證據 → 脈絡化 → 多元觀點',
+    points: [
+      '先分「史料」與「詮釋」，避免把評論當事實。',
+      '每題至少給一條因果鏈（原因→機制→結果）。',
+      '比較不同群體立場時，要寫其證據基礎與限制。',
+    ],
+    template: '史料：____\n時空脈絡：____\n因果鏈：____\n觀點比較：____\n結論：____',
+  },
+  civics: {
+    focus: '權利衝突辨識 → 法治原則 → 制度設計',
+    points: [
+      '先圈出衝突權利（隱私、健康、平等、研究自由）。',
+      '用比例原則三步驟寫作：適當性→必要性→衡量性。',
+      '答案加入救濟與問責機制，才符合108素養題要求。',
+    ],
+    template: '爭點：____\n權利衝突：____\n比例原則檢驗：____\n制度與救濟：____',
+  },
+  chinese: {
+    focus: '文本理解 → 論證品質 → 表達精準',
+    points: [
+      '摘要時保留「主張-證據-推論」三段結構。',
+      '修辭判讀要交代語境功能，不只寫名稱。',
+      '論說寫作用可量化證據，避免空泛價值口號。',
+    ],
+    template: '主旨：____\n關鍵語句：____\n修辭/句法功能：____\n論證強弱：____',
+  },
+  english: {
+    focus: '學術語法 → 論述連接 → 批判閱讀',
+    points: [
+      '句構先抓主幹（S/V/O），再處理修飾子句。',
+      '科普閱讀題先標記對比/因果連接詞再選答案。',
+      '寫作採 hedging（may, suggests）避免過度斷言。',
+    ],
+    template: 'Main claim: ____\nEvidence: ____\nConnector: ____\nGrammar checkpoint: ____',
+  },
+  biology: {
+    focus: '機制推理 → 數據解釋 → 跨層次整合',
+    points: [
+      '把分子-細胞-個體-族群四層連起來作答。',
+      '先解讀圖表趨勢，再回扣生理或演化機制。',
+      '計算題附上生物意義（適存度、通量、能量成本）。',
+    ],
+    template: '層次：____\n機制：____\n數據證據：____\n跨域連結：____\n結論：____',
+  },
+};
+
+function shuffleArray(items) {
+  const arr = [...items];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function loadScores() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(SCORE_KEY) || '{}');
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function getScopedQuizzes(subjectKey, scopeIndex) {
+  const all = SUBJECTS[subjectKey]?.quizzes || [];
+  const scopedMatrix = QUIZ_SCOPE_INDEX_B2[subjectKey];
+  if (!scopedMatrix || scopeIndex < 0 || !scopedMatrix[scopeIndex]) return all;
+  const pick = [...new Set(scopedMatrix[scopeIndex])]
+    .filter(i => Number.isInteger(i) && i >= 0 && i < all.length)
+    .map(i => all[i]);
+  return pick.length > 0 ? pick : all;
+}
+
+const EXAM_TYPE_OPTIONS = [
+  { key: 'midterm', label: '段考' },
+  { key: 'gsat', label: '學測' },
+  { key: 'ast', label: '分科' },
+];
+
+const STAGE_OPTIONS = [
+  { key: 'g10', label: '高一' },
+  { key: 'g11', label: '高二' },
+  { key: 'g12', label: '高三' },
+];
+
+const DIFFICULTY_OPTIONS = [
+  { key: 'base', label: '底' },
+  { key: 'back', label: '後' },
+  { key: 'mid', label: '均' },
+  { key: 'front', label: '前' },
+  { key: 'top', label: '頂標' },
+  { key: 'ao_beginner', label: '奧初' },
+  { key: 'ao_review', label: '奧複' },
+  { key: 'ao_bronze', label: '奧銅' },
+  { key: 'ao_silver', label: '奧銀' },
+  { key: 'ao_gold', label: '奧金' },
+];
+
+const STAGE_TO_SCOPE_INDEX = { g10: 0, g11: 1, g12: 2 };
+const DIFFICULTY_RANK = {
+  base: 1,
+  back: 2,
+  mid: 3,
+  front: 4,
+  top: 5,
+  ao_beginner: 6,
+  ao_review: 7,
+  ao_bronze: 8,
+  ao_silver: 9,
+  ao_gold: 10,
+};
+const OLYMPIAD_SUBJECT_KEYS = new Set(['math', 'physics', 'chemistry', 'biology']);
+const OLYMPIAD_DIFFICULTY_KEYS = new Set(['ao_beginner', 'ao_review', 'ao_bronze', 'ao_silver', 'ao_gold']);
+
+function getAvailableDifficultyOptions(subjectKey) {
+  if (OLYMPIAD_SUBJECT_KEYS.has(subjectKey)) return DIFFICULTY_OPTIONS;
+  return DIFFICULTY_OPTIONS.filter(opt => !OLYMPIAD_DIFFICULTY_KEYS.has(opt.key));
+}
+
+function normalizeDifficultyForSubject(subjectKey, difficultyKey) {
+  if (!OLYMPIAD_SUBJECT_KEYS.has(subjectKey) && OLYMPIAD_DIFFICULTY_KEYS.has(difficultyKey)) {
+    return 'top';
+  }
+  return difficultyKey;
+}
+
+function splitIndicesIntoStages(total) {
+  const all = Array.from({ length: total }, (_, i) => i);
+  if (all.length === 0) return [[], [], []];
+  const base = Math.floor(total / 3);
+  const remain = total % 3;
+  const sizes = [base + (remain > 0 ? 1 : 0), base + (remain > 1 ? 1 : 0), base];
+  const buckets = [];
+  let ptr = 0;
+  for (const size of sizes) {
+    buckets.push(all.slice(ptr, ptr + size));
+    ptr += size;
+  }
+  return buckets;
+}
+
+function difficultyForQuiz(subjectKey, idx, total) {
+  if (total <= 0) return 'mid';
+  const ratio = (idx + 1) / total;
+
+  if (OLYMPIAD_SUBJECT_KEYS.has(subjectKey)) {
+    if (ratio <= 0.10) return 'base';
+    if (ratio <= 0.20) return 'back';
+    if (ratio <= 0.30) return 'mid';
+    if (ratio <= 0.40) return 'front';
+    if (ratio <= 0.50) return 'top';
+    if (ratio <= 0.62) return 'ao_beginner';
+    if (ratio <= 0.74) return 'ao_review';
+    if (ratio <= 0.84) return 'ao_bronze';
+    if (ratio <= 0.93) return 'ao_silver';
+    return 'ao_gold';
+  }
+
+  if (ratio <= 0.20) return 'base';
+  if (ratio <= 0.40) return 'back';
+  if (ratio <= 0.60) return 'mid';
+  if (ratio <= 0.80) return 'front';
+  return 'top';
+}
+
+function buildQuizPool(subjectKey, examType, stageKey, difficultyKey) {
+  const normalizedDifficulty = normalizeDifficultyForSubject(subjectKey, difficultyKey);
+  const allQuizzes = SUBJECTS[subjectKey]?.quizzes || [];
+  const total = allQuizzes.length;
+  const allIndices = Array.from({ length: total }, (_, i) => i);
+  if (allIndices.length === 0) return [];
+
+  const stageIdx = STAGE_TO_SCOPE_INDEX[stageKey] ?? 0;
+  const stageBuckets = splitIndicesIntoStages(total);
+  let baseIndices = [];
+
+  if (examType === 'midterm') {
+    const scopedMatrix = QUIZ_SCOPE_INDEX_B2[subjectKey];
+    const scoped = scopedMatrix?.[stageIdx];
+    if (Array.isArray(scoped) && scoped.length > 0) {
+      baseIndices = [...new Set(scoped)].filter(i => i >= 0 && i < total);
+    } else {
+      baseIndices = stageBuckets[stageIdx] || allIndices;
+    }
+  } else {
+    baseIndices = stageBuckets[stageIdx] || allIndices;
+  }
+
+  if (baseIndices.length === 0) baseIndices = allIndices;
+
+  let picked = baseIndices;
+  if (normalizedDifficulty !== 'all') {
+    const target = DIFFICULTY_RANK[normalizedDifficulty] ?? 3;
+    let exact = baseIndices.filter(i => DIFFICULTY_RANK[difficultyForQuiz(subjectKey, i, total)] === target);
+
+    if (exact.length < 3) {
+      exact = baseIndices.filter(i => DIFFICULTY_RANK[difficultyForQuiz(subjectKey, i, total)] <= target);
+    }
+    if (
+      exact.length === 0 &&
+      OLYMPIAD_SUBJECT_KEYS.has(subjectKey) &&
+      DIFFICULTY_RANK[normalizedDifficulty] >= DIFFICULTY_RANK.ao_beginner
+    ) {
+      exact = baseIndices.filter(i => DIFFICULTY_RANK[difficultyForQuiz(subjectKey, i, total)] >= DIFFICULTY_RANK.top);
+    }
+    if (exact.length > 0) picked = exact;
+  }
+
+  return picked.map((idx) => ({
+    idx,
+    difficulty: difficultyForQuiz(subjectKey, idx, total),
+    quiz: allQuizzes[idx],
+  }));
+}
+
+function getPlacementAnalysis(examType, pct, subject) {
+  if (examType === 'midterm') {
+    if (pct >= 95) return { title: '校排落點', body: '預估校排前 3%（校排頂尖）。' };
+    if (pct >= 90) return { title: '校排落點', body: '預估校排前 5%（可穩定衝榜）。' };
+    if (pct >= 85) return { title: '校排落點', body: '預估校排前 10%（有機會衝刺頂標）。' };
+    if (pct >= 75) return { title: '校排落點', body: '預估校排前 25%（中前段，建議加強錯題回刷）。' };
+    if (pct >= 60) return { title: '校排落點', body: '預估校排前 50%（先補核心觀念與計算穩定度）。' };
+    return { title: '校排落點', body: '預估校排後 50%（建議先切到「底/後/均」建立基本盤）。' };
+  }
+
+  const majorHintBySubject = {
+    math: '理工/資工/電機',
+    physics: '電機/機械/材料',
+    chemistry: '化學/化工/醫藥衛生',
+    biology: '醫牙/生科/生醫',
+    geography: '地科/環工/地理',
+    history: '歷史/社會/法政',
+    civics: '法政/社會/管理',
+    chinese: '文史哲/教育/法政',
+    english: '外文/國際事務/商管',
+  };
+  const majorHint = majorHintBySubject[subject] || '目標校系';
+
+  if (examType === 'gsat') {
+    if (pct >= 92) return { title: '校系落點（學測）', body: `可挑戰國立前段與熱門學群（${majorHint}）。` };
+    if (pct >= 85) return { title: '校系落點（學測）', body: `可穩定落在國立/私立前段學群（${majorHint}）。` };
+    if (pct >= 75) return { title: '校系落點（學測）', body: `可攻守中段學群，建議強化跨科素養題。` };
+    if (pct >= 65) return { title: '校系落點（學測）', body: `落點偏中後段，先拉高基本題與閱讀判讀正答率。` };
+    return { title: '校系落點（學測）', body: `目前落點風險較高，建議先用「底/後/均」重建基本盤。` };
+  }
+
+  if (pct >= 92) return { title: '校系落點（分科）', body: `可挑戰國立前段與熱門科系（${majorHint}）。` };
+  if (pct >= 85) return { title: '校系落點（分科）', body: `可穩定落在國立/私立前段科系（${majorHint}）。` };
+  if (pct >= 75) return { title: '校系落點（分科）', body: `可攻守中段科系，建議增加高鑑別度題型練習。` };
+  if (pct >= 65) return { title: '校系落點（分科）', body: `落點偏中後段，建議先穩住計算題與章節核心。` };
+  return { title: '校系落點（分科）', body: `目前落點風險較高，先補基礎再衝刺前段題。` };
+}
+
+// ═══════════════════════════════════════════════
+// 🎨 主應用程式
+// ═══════════════════════════════════════════════
+
+function App() {
+  const [view, setView] = useState('home');
+  const [subject, setSubject] = useState(null);
+  const [mode, setMode] = useState(null);
+  const [scores, setScores] = useState(loadScores);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try { localStorage.setItem(SCORE_KEY, JSON.stringify(scores)); } catch {}
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [scores]);
+
+  const updateScore = (subj, score, total) => {
+    setScores(prev => {
+      const nextHistory = [...(prev[subj] || []), { score, total, date: new Date().toLocaleString('zh-TW') }].slice(-30);
+      return { ...prev, [subj]: nextHistory };
+    });
+  };
+
+  const daysLeft = useMemo(() => Math.max(0, Math.ceil((EXAM_DATE - new Date()) / DAY_MS)), []);
+  const openStudy = (s, m) => { setSubject(s); setMode(m); setView('study'); };
+
+  if (view === 'home') return <Home daysLeft={daysLeft} scores={scores} onSelect={openStudy} />;
+  if (view === 'study' && mode === 'flashcard') return <Flashcards subject={subject} onBack={() => setView('home')} />;
+  if (view === 'study' && mode === 'quiz') return <Quiz subject={subject} onBack={() => setView('home')} onFinish={updateScore} />;
+  if (view === 'study' && mode === 'summary') return <Summary subject={subject} onBack={() => setView('home')} />;
+  return <Home daysLeft={daysLeft} scores={scores} onSelect={openStudy} />;
+}
+
+// ═══════════════════════════════════════════════
+// 🏠 首頁
+// ═══════════════════════════════════════════════
+
+function Home({ daysLeft, scores, onSelect }) {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-8">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl md:text-4xl font-black text-gray-800 mb-2">📚 段考複習系統</h1>
+          <p className="text-gray-500">和美高中 高一普通班 113-2 第一次段考</p>
+          <div className={`inline-block mt-4 px-6 py-3 rounded-2xl font-bold text-white text-xl ${daysLeft <= 3 ? 'bg-red-500 pulse' : daysLeft <= 7 ? 'bg-orange-500' : 'bg-green-500'}`}>
+            ⏰ 倒數 {daysLeft} 天 — {daysLeft <= 3 ? '衝刺！' : daysLeft <= 7 ? '把握時間！' : '穩紮穩打！'}
+          </div>
+        </div>
+
+        {/* Exam Schedule */}
+        <div className="bg-white rounded-2xl shadow-sm border p-4 md:p-6 mb-8">
+          <h2 className="font-bold text-lg mb-3">📅 考試日程</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
+              <div className="font-bold text-blue-700 mb-2">3/26（三）Day 1</div>
+              <div className="text-sm space-y-1 text-gray-600">
+                <div>📜 歷史 → 🔤 英聽 → 🔤 英文 → ⚖️ 公民 → 📖 國文</div>
+              </div>
+            </div>
+            <div className="bg-purple-50 rounded-xl p-4 border border-purple-100">
+              <div className="font-bold text-purple-700 mb-2">3/27（四）Day 2</div>
+              <div className="text-sm space-y-1 text-gray-600">
+                <div>🌍 地理 → 📐 數學 → ⚛️🧪 物/化 → ✍️ 作文</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Subject Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {SUBJECT_ENTRIES.map(([key, subj]) => {
+            const history = scores[key] || [];
+            const bestScore = history.length > 0 ? Math.max(...history.map(h => Math.round(h.score/h.total*100))) : null;
+
+            return (
+              <div key={key} className={`rounded-2xl border-2 ${BG_MAP[subj.color]} p-4 fade-in`}>
+                <div className="text-center mb-3">
+                  <div className="text-3xl mb-1">{subj.icon}</div>
+                  <div className="font-bold text-lg">{subj.name}</div>
+                  <div className="text-xs text-gray-500">{subj.range}</div>
+                  {subj.publisher && (
+                    <div className="text-xs text-gray-500 mt-1">教材版本：{subj.publisher}</div>
+                  )}
+                  {bestScore !== null && (
+                    <div className="mt-1 text-xs">
+                      最高分：<span className={bestScore >= 80 ? 'text-green-600 font-bold' : bestScore >= 60 ? 'text-orange-600 font-bold' : 'text-red-600 font-bold'}>{bestScore}%</span>
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <button onClick={() => onSelect(key, 'flashcard')}
+                    className={`w-full py-2 rounded-xl text-white font-medium text-sm bg-gradient-to-r ${COLOR_MAP[subj.color]} hover:opacity-90 transition shadow-sm`}>
+                    📇 閃卡速記
+                  </button>
+                  <button onClick={() => onSelect(key, 'quiz')}
+                    className={`w-full py-2 rounded-xl text-white font-medium text-sm bg-gradient-to-r ${COLOR_MAP[subj.color]} hover:opacity-90 transition shadow-sm`}>
+                    📝 模擬測驗
+                  </button>
+                  <button onClick={() => onSelect(key, 'summary')}
+                    className={`w-full py-2 rounded-xl text-white font-medium text-sm bg-gradient-to-r ${COLOR_MAP[subj.color]} hover:opacity-90 transition shadow-sm`}>
+                    📌 重點整理
+                  </button>
+                  {key === 'english' && (
+                    <a href="english.html"
+                      className={`block w-full py-2 rounded-xl text-white font-medium text-sm text-center bg-gradient-to-r ${COLOR_MAP[subj.color]} hover:opacity-90 transition shadow-sm`}>
+                      🎯 英文外部特訓 →
+                    </a>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Study Tips */}
+        <div className="mt-8 bg-white rounded-2xl shadow-sm border p-6">
+          <h2 className="font-bold text-lg mb-3">💡 7 天衝刺策略</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div className="bg-yellow-50 rounded-lg p-3">
+              <strong>Day 1-3（3/19-21）：</strong>讀完所有科目一輪，用閃卡記重點
+            </div>
+            <div className="bg-blue-50 rounded-lg p-3">
+              <strong>Day 4-5（3/22-23）：</strong>做模擬測驗，找出弱點科目加強
+            </div>
+            <div className="bg-green-50 rounded-lg p-3">
+              <strong>Day 6（3/24）：</strong>複習 Day 1 考科（歷史、英文、公民、國文）
+            </div>
+            <div className="bg-purple-50 rounded-lg p-3">
+              <strong>Day 7（3/25）：</strong>複習 Day 2 考科（地理、數學、物理、化學）
+            </div>
+          </div>
+        </div>
+
+        <div className="text-center mt-6 text-gray-400 text-xs">
+          和美高中段考複習系統 v2.1（108課綱筆記升級）| 含生物奧林匹亞 | 資料自動儲存
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════
+// 📇 閃卡模式
+// ═══════════════════════════════════════════════
+
+function Flashcards({ subject, onBack }) {
+  const subj = SUBJECTS[subject];
+  const [index, setIndex] = useState(0);
+  const [flipped, setFlipped] = useState(false);
+  const [known, setKnown] = useState([]);
+  const [unknown, setUnknown] = useState([]);
+  const cards = subj.flashcards;
+
+  const handleKnow = () => {
+    setKnown(prev => (prev.includes(index) ? prev : [...prev, index]));
+    setUnknown(prev => prev.filter(i => i !== index));
+    setFlipped(false);
+    setTimeout(() => setIndex(i => Math.min(i + 1, cards.length)), 120);
+  };
+
+  const handleDontKnow = () => {
+    setUnknown(prev => (prev.includes(index) ? prev : [...prev, index]));
+    setKnown(prev => prev.filter(i => i !== index));
+    setFlipped(false);
+    setTimeout(() => setIndex(i => Math.min(i + 1, cards.length)), 120);
+  };
+
+  if (index >= cards.length) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-8 flex items-center justify-center">
+        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center fade-in">
+          <div className="text-5xl mb-4">🎉</div>
+          <h2 className="text-2xl font-bold mb-4">{subj.name} 閃卡完成！</h2>
+          <div className="grid grid-cols-2 gap-4 mb-6">
+            <div className="bg-green-50 rounded-xl p-4">
+              <div className="text-3xl font-bold text-green-600">{known.length}</div>
+              <div className="text-sm text-gray-500">已熟悉 ✓</div>
+            </div>
+            <div className="bg-red-50 rounded-xl p-4">
+              <div className="text-3xl font-bold text-red-600">{unknown.length}</div>
+              <div className="text-sm text-gray-500">需加強 ✗</div>
+            </div>
+          </div>
+          {unknown.length > 0 && (
+            <div className="bg-yellow-50 rounded-xl p-4 mb-4 text-left">
+              <div className="font-bold text-sm mb-2">📌 需要加強的觀念：</div>
+              {unknown.map(i => (
+                <div key={i} className="text-sm text-gray-600 mb-1">• {cards[i].q}</div>
+              ))}
+            </div>
+          )}
+          <div className="space-y-2">
+            <button onClick={() => { setIndex(0); setFlipped(false); setKnown([]); setUnknown([]); }}
+              className="w-full py-3 bg-blue-500 text-white rounded-xl font-bold hover:bg-blue-600">
+              🔄 再來一輪
+            </button>
+            <button onClick={onBack} className="w-full py-3 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200">
+              ← 回首頁
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const card = cards[index];
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-8">
+      <div className="max-w-lg mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <button onClick={onBack} className="text-gray-500 hover:text-gray-700 font-medium">← 回首頁</button>
+          <div className="text-sm text-gray-500">{subj.icon} {subj.name} 閃卡</div>
+          <div className="text-sm font-bold">{index + 1} / {cards.length}</div>
+        </div>
+
+        {/* Progress Bar */}
+        <div className="w-full bg-gray-200 rounded-full h-2 mb-6">
+          <div className="bg-blue-500 h-2 rounded-full transition-all" style={{ width: `${(index / cards.length) * 100}%` }}></div>
+        </div>
+
+        {/* Card */}
+        <div className={`flip-card cursor-pointer ${flipped ? 'flipped' : ''}`} onClick={() => setFlipped(!flipped)} style={{ height: '320px' }}>
+          <div className="flip-card-inner relative w-full h-full">
+            <div className="flip-card-front absolute w-full h-full bg-white rounded-2xl shadow-lg border-2 border-blue-100 flex items-center justify-center p-8">
+              <div className="text-center">
+                <div className="text-xs text-blue-400 mb-4">Q 問題（點擊翻牌）</div>
+                <div className="text-xl font-bold text-gray-800">{card.q}</div>
+              </div>
+            </div>
+            <div className="flip-card-back absolute w-full h-full bg-gradient-to-br from-blue-500 to-purple-500 rounded-2xl shadow-lg flex items-center justify-center p-8">
+              <div className="text-center">
+                <div className="text-xs text-blue-100 mb-4">A 答案</div>
+                <div className="text-lg font-medium text-white whitespace-pre-line">{card.a}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Buttons */}
+        <div className="flex gap-3 mt-6">
+          <button onClick={handleDontKnow} className="flex-1 py-4 bg-red-100 text-red-600 rounded-xl font-bold text-lg hover:bg-red-200 transition">
+            ✗ 不熟
+          </button>
+          <button onClick={handleKnow} className="flex-1 py-4 bg-green-100 text-green-600 rounded-xl font-bold text-lg hover:bg-green-200 transition">
+            ✓ 會了
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════
+// 📝 測驗模式
+// ═══════════════════════════════════════════════
+
+function Quiz({ subject, onBack, onFinish }) {
+  const subj = SUBJECTS[subject];
+  const scopeRows = EXAM_SCOPE_B2[subject] || [];
+  const [examType, setExamType] = useState('midterm');
+  const [stageKey, setStageKey] = useState('g10');
+  const [difficultyKey, setDifficultyKey] = useState('top');
+  const difficultyOptions = useMemo(() => getAvailableDifficultyOptions(subject), [subject]);
+  const scopedPool = useMemo(
+    () => buildQuizPool(subject, examType, stageKey, difficultyKey).map(item => item.quiz),
+    [subject, examType, stageKey, difficultyKey]
+  );
+  const quizzes = useMemo(() => shuffleArray(scopedPool), [scopedPool]);
+  const [index, setIndex] = useState(0);
+  const [selected, setSelected] = useState(null);
+  const [showExplain, setShowExplain] = useState(false);
+  const [answers, setAnswers] = useState([]);
+  const correctCount = useMemo(() => answers.reduce((sum, a) => sum + (a.isCorrect ? 1 : 0), 0), [answers]);
+  const wrongAnswers = useMemo(() => answers.filter(a => !a.isCorrect), [answers]);
+
+  useEffect(() => {
+    setExamType('midterm');
+    setStageKey('g10');
+    setDifficultyKey('top');
+  }, [subject]);
+
+  useEffect(() => {
+    if (!difficultyOptions.some(opt => opt.key === difficultyKey)) {
+      setDifficultyKey('top');
+    }
+  }, [difficultyOptions, difficultyKey]);
+
+  useEffect(() => {
+    setIndex(0);
+    setSelected(null);
+    setShowExplain(false);
+    setAnswers([]);
+  }, [subject, examType, stageKey, difficultyKey]);
+
+  const stageIdx = STAGE_TO_SCOPE_INDEX[stageKey] ?? 0;
+  const stageLabel = STAGE_OPTIONS.find(s => s.key === stageKey)?.label || '高一';
+  const examTypeLabel = EXAM_TYPE_OPTIONS.find(e => e.key === examType)?.label || '段考';
+  const difficultyLabel = difficultyOptions.find(d => d.key === difficultyKey)?.label || '頂標';
+  const activeScope = examType === 'midterm' ? scopeRows[stageIdx] : null;
+
+  const handleSelect = (i) => {
+    if (!quizzes[index]) return;
+    if (selected !== null) return;
+    setSelected(i);
+    setShowExplain(true);
+    const correct = i === quizzes[index].answer;
+    setAnswers(prev => [...prev, { q: quizzes[index].q, selected: i, correct: quizzes[index].answer, isCorrect: correct }]);
+  };
+
+  const handleNext = () => {
+    if (index + 1 >= quizzes.length) {
+      onFinish(subject, correctCount, quizzes.length);
+    }
+    setSelected(null);
+    setShowExplain(false);
+    setIndex(i => i + 1);
+  };
+
+  if (quizzes.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-8 flex items-center justify-center">
+        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center fade-in">
+          <div className="text-5xl mb-4">📭</div>
+          <h2 className="text-2xl font-bold mb-2">{subj.name} 題庫暫無資料</h2>
+          <div className="text-sm text-gray-500 mb-4">請切換階段、考試類型或難易度。</div>
+          <button onClick={onBack} className="w-full py-3 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200">
+            ← 回首頁
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (index >= quizzes.length) {
+    const pct = Math.round(correctCount / Math.max(1, quizzes.length) * 100);
+    const placement = getPlacementAnalysis(examType, pct, subject);
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-8 flex items-center justify-center">
+        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center fade-in">
+          <div className="text-5xl mb-4">{pct >= 80 ? '🌟' : pct >= 60 ? '👍' : '💪'}</div>
+          <h2 className="text-2xl font-bold mb-2">{subj.name} 測驗結果</h2>
+          <div className="text-xs text-gray-500 mb-2">{examTypeLabel}｜{stageLabel}｜{difficultyLabel}</div>
+          {activeScope && (
+            <div className="text-xs text-gray-500 mb-2">範圍：{activeScope.exam} · {activeScope.scope}</div>
+          )}
+          <div className={`text-5xl font-black my-4 ${pct >= 80 ? 'text-green-500' : pct >= 60 ? 'text-orange-500' : 'text-red-500'}`}>
+            {pct}%
+          </div>
+          <div className="text-gray-500 mb-4">{correctCount} / {quizzes.length} 題答對</div>
+          <div className="bg-blue-50 rounded-xl p-3 mb-4 text-left">
+            <div className="font-bold text-sm text-blue-700 mb-1">{placement.title}</div>
+            <div className="text-sm text-gray-700">{placement.body}</div>
+          </div>
+
+          {wrongAnswers.length > 0 && (
+            <div className="bg-red-50 rounded-xl p-4 mb-4 text-left">
+              <div className="font-bold text-sm mb-2 text-red-600">❌ 答錯的題目：</div>
+              {wrongAnswers.map((a, i) => (
+                <div key={i} className="text-sm text-gray-600 mb-1">• {a.q}</div>
+              ))}
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <button onClick={() => { setIndex(0); setSelected(null); setShowExplain(false); setAnswers([]); }}
+              className="w-full py-3 bg-blue-500 text-white rounded-xl font-bold hover:bg-blue-600">
+              🔄 重新測驗（同範圍）
+            </button>
+            <button onClick={onBack} className="w-full py-3 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200">
+              ← 回首頁
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const quiz = quizzes[index];
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-8">
+      <div className="max-w-lg mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <button onClick={onBack} className="text-gray-500 hover:text-gray-700 font-medium">← 回首頁</button>
+          <div className="text-sm text-gray-500">{subj.icon} {subj.name} 測驗</div>
+          <div className="text-sm font-bold">{index + 1} / {quizzes.length}</div>
+        </div>
+
+        <div className="bg-white rounded-2xl border p-4 mb-4 fade-in">
+          <div className="text-xs font-bold text-indigo-700 mb-2">108課綱分層出題</div>
+          <div className="text-[11px] text-gray-500 mb-2">學科 × 階段 × 考試類型 × 難易度</div>
+
+          <div className="grid grid-cols-2 gap-2 mb-2">
+            {EXAM_TYPE_OPTIONS.map((opt) => (
+              <button
+                key={opt.key}
+                onClick={() => setExamType(opt.key)}
+                className={`py-2 rounded-lg text-xs font-bold border transition ${examType === opt.key ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-700'}`}>
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 mb-2">
+            {STAGE_OPTIONS.map((opt) => (
+              <button
+                key={opt.key}
+                onClick={() => setStageKey(opt.key)}
+                className={`py-2 rounded-lg text-xs font-bold border transition ${stageKey === opt.key ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-emerald-300 hover:text-emerald-700'}`}>
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-5 gap-2">
+            {difficultyOptions.map((opt) => (
+              <button
+                key={opt.key}
+                onClick={() => setDifficultyKey(opt.key)}
+                className={`py-2 rounded-lg text-xs font-bold border transition ${difficultyKey === opt.key ? 'bg-orange-500 text-white border-orange-500' : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-orange-300 hover:text-orange-700'}`}>
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-3 text-xs text-gray-600">
+            目前：{examTypeLabel}｜{stageLabel}｜{difficultyLabel}｜題數 {quizzes.length}
+          </div>
+          {activeScope && (
+            <div className="mt-1 text-xs text-gray-600">範圍：{activeScope.exam} · {activeScope.scope}</div>
+          )}
+          {!activeScope && examType === 'bigexam' && (
+            <div className="mt-1 text-xs text-gray-600">範圍：學測/分科素養整合（校系導向）</div>
+          )}
+        </div>
+
+        <div className="w-full bg-gray-200 rounded-full h-2 mb-6">
+          <div className="bg-purple-500 h-2 rounded-full transition-all" style={{ width: `${((index) / quizzes.length) * 100}%` }}></div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-lg border p-6 mb-4 fade-in">
+          <div className="text-lg font-bold text-gray-800 mb-6">{quiz.q}</div>
+          <div className="space-y-3">
+            {quiz.options.map((opt, i) => {
+              let cls = 'bg-gray-50 border-gray-200 hover:bg-blue-50 hover:border-blue-300 cursor-pointer';
+              if (selected !== null) {
+                if (i === quiz.answer) cls = 'bg-green-100 border-green-400 text-green-800';
+                else if (i === selected && i !== quiz.answer) cls = 'bg-red-100 border-red-400 text-red-800 shake';
+                else cls = 'bg-gray-50 border-gray-200 opacity-50';
+              }
+              return (
+                <button key={i} onClick={() => handleSelect(i)}
+                  className={`w-full text-left p-4 rounded-xl border-2 transition font-medium ${cls}`}>
+                  <span className="inline-block w-8 h-8 rounded-full bg-white border text-center leading-8 mr-3 text-sm">
+                    {String.fromCharCode(65 + i)}
+                  </span>
+                  {opt}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {showExplain && (
+          <div className="bg-yellow-50 border-2 border-yellow-200 rounded-2xl p-5 mb-4 fade-in">
+            <div className="font-bold text-yellow-800 mb-2">
+              {selected === quiz.answer ? '✅ 答對了！' : '❌ 答錯了！'}
+            </div>
+            <div className="text-sm text-gray-700 whitespace-pre-line">{quiz.explain}</div>
+          </div>
+        )}
+
+        {showExplain && (
+          <button onClick={handleNext}
+            className="w-full py-4 bg-blue-500 text-white rounded-xl font-bold text-lg hover:bg-blue-600 transition">
+            {index + 1 >= quizzes.length ? '查看結果 →' : '下一題 →'}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════
+// 📌 重點整理
+// ═══════════════════════════════════════════════
+
+function Summary({ subject, onBack }) {
+  const subj = SUBJECTS[subject];
+
+  const summaries = {
+    math: [
+      { title: '第1章：數列與級數', points: [
+        '等差數列：每項差固定值 d，aₙ = a₁ + (n-1)d',
+        '等差級數求和：Sₙ = n(a₁ + aₙ)/2',
+        '等比數列：每項乘固定值 r，aₙ = a₁·rⁿ⁻¹',
+        '等比級數求和：Sₙ = a₁(1-rⁿ)/(1-r)',
+        '無窮等比級數：|r|<1 時收斂，S = a₁/(1-r)',
+        'Σ 記號：求和的簡寫，注意上下界',
+        '常用公式：Σk = n(n+1)/2、Σk² = n(n+1)(2n+1)/6',
+      ]},
+      { title: '第2章：指數與對數', points: [
+        '指數律：aᵐ·aⁿ = aᵐ⁺ⁿ、(aᵐ)ⁿ = aᵐⁿ、a⁰ = 1',
+        '對數定義：log_a(b) = c ⟺ aᶜ = b',
+        '對數運算：log(MN) = logM + logN',
+        '對數運算：log(M/N) = logM - logN',
+        '對數運算：log(Mⁿ) = n·logM',
+        '換底公式：log_a(b) = log_c(b)/log_c(a)',
+        '常用對數 log₁₀ 和自然對數 ln (log_e)',
+      ]},
+    ],
+    physics: [
+      { title: '1-1～1-3 運動學', points: [
+        '位移（向量）vs 距離（純量）',
+        '速度 = Δx/Δt（向量）vs 速率（純量）',
+        '加速度 a = Δv/Δt',
+        '等加速度三公式：v=v₀+at, x=v₀t+½at², v²=v₀²+2ax',
+        '自由落體：a = g ≈ 9.8 m/s²，與質量無關',
+        'v-t 圖：斜率=加速度，面積=位移',
+      ]},
+      { title: '2-1～2-3 力與運動', points: [
+        '牛頓第一定律：慣性定律（合力=0 → 靜止或等速）',
+        '牛頓第二定律：F = ma',
+        '牛頓第三定律：作用力=反作用力（不同物體）',
+        '重力 W = mg，方向向下',
+        '正向力 N：垂直接觸面的支撐力',
+        '摩擦力：靜摩擦 fₛ ≤ μₛN，動摩擦 fₖ = μₖN',
+        '力的合成與分解（向量加法）',
+      ]},
+    ],
+    chemistry: [
+      { title: '1-1～1-2 原子結構', points: [
+        '原子序 Z = 質子數 = 電子數（中性原子）',
+        '質量數 A = 質子數 + 中子數',
+        '同位素：同元素不同中子數',
+        '電子組態：1s→2s→2p→3s→3p→4s→3d',
+        '價電子：最外層電子，決定化學性質',
+      ]},
+      { title: '1-3～1-5 化學鍵與莫耳', points: [
+        '八隅體規則：最外層趨向 8 個電子',
+        '離子鍵：金屬+非金屬，電子轉移',
+        '共價鍵：非金屬+非金屬，電子共享',
+        '電負度：F > O > N > Cl > ... > Na',
+        '路易斯結構：點表示價電子',
+        '莫耳：1 mol = 6.02×10²³ 個粒子',
+        '莫耳質量：原子量(g) = 1 mol 的質量',
+      ]},
+    ],
+    geography: [
+      { title: 'Ch1 地理資訊', points: [
+        'GIS：地理資訊系統，圖層疊合分析',
+        'GPS：全球定位系統，至少 4 顆衛星',
+        '遙測：衛星影像、航空照片，非接觸式',
+        '比例尺：分母越小→大比例尺→越詳細',
+        '等高線：密集=陡，稀疏=緩',
+      ]},
+      { title: 'Ch2～Ch3 台灣地理', points: [
+        '台灣位置：N22°~N25°、E120°~E122°',
+        '北回歸線通過嘉義',
+        '五大山脈：中央、雪山、玉山、阿里山、海岸',
+        '地形不對稱：東陡西緩',
+        '氣候：北部亞熱帶、南部熱帶',
+        '季風：冬季東北季風、夏季西南季風',
+      ]},
+    ],
+    history: [
+      { title: '序論：歷史學方法', points: [
+        '一手史料 vs 二手史料',
+        '史料的辨偽與考證',
+        '多元史觀：政治、經濟、社會、文化',
+        '歷史分期是人為劃分',
+      ]},
+      { title: '1-1～2-1 台灣早期歷史', points: [
+        '原住民：南島語族，目前法定 16 族',
+        '大航海時代：葡萄牙人稱 Formosa',
+        '荷治時期（1624-1662）：VOC、貿易、地方會議',
+        '西班牙（1626-1642）：北台灣',
+        '鄭氏時期（1662-1683）：反清復明',
+        '清領前期：消極治台、渡台禁令、班兵制、番界',
+      ]},
+    ],
+    civics: [
+      { title: 'Ch1 人權與法治', points: [
+        '人性尊嚴：所有權利的基礎',
+        '基本權利：自由權、平等權、受益權、參政權',
+        '法律保留原則：限制人民權利需有法律依據',
+        '比例原則：適當性、必要性、衡量性',
+        '正當法律程序：程序正義',
+      ]},
+      { title: 'Ch2 民主政治', points: [
+        '國民主權：權力來自人民',
+        '權力分立：行政、立法、司法互相制衡',
+        '我國五院制：行政、立法、司法、考試、監察',
+        '多數決原則 + 少數權利保障',
+        '公民不服從：非暴力、公開、願承擔後果',
+      ]},
+    ],
+    chinese: [
+      { title: '修辭技巧', points: [
+        '譬喻：明喻（像/如）、暗喻（是）、借喻',
+        '轉化：擬人（物→人）、擬物（人→物）',
+        '誇飾：誇大或縮小',
+        '排比：≥3 句結構相似（vs 對偶只有 2 句）',
+        '映襯、設問、層遞',
+      ]},
+      { title: '文言文基礎', points: [
+        '「之」：代詞/的/到…去/音節助詞',
+        '「而」：順接/轉折/修飾',
+        '「其」：他的/那個/難道（反問）',
+        '「以」：用/因為/來/認為',
+        '數字虛用：三=多、百=很多',
+      ]},
+    ],
+    english: [
+      { title: '文法重點（頂標）', points: [
+        '現在完成式：have/has + p.p.（經驗/持續/完成）★ 學術寫作常用',
+        'have been to(去過) vs have gone to(去了人還在)',
+        '被動語態：be + p.p. ★ 科學寫作大量使用',
+        '關係代名詞：who(人)/which(物)/that(皆可) ★ 非限定只用which',
+        '分詞構句：V-ing(主動), p.p.(被動) 簡化副詞子句',
+        '假設語氣：If + S + were/Ved, S + would + V',
+        'Not only 倒裝：Not only does he..., but also...',
+      ]},
+      { title: '學測科普閱讀詞彙', points: [
+        'hypothesis=假說, evidence=證據, species=物種',
+        'organism=有機體, habitat=棲地, ecosystem=生態系',
+        'endangered=瀕危, biodiversity=生物多樣性',
+        'sustainable=永續的, conservation=保育',
+      ]},
+    ],
+    biology: [
+      { title: '細胞與分子生物學', points: [
+        '細胞膜：磷脂雙層+鑲嵌蛋白質+膽固醇（流體鑲嵌模型）',
+        'DNA複製：5\'→3\'方向，領先股連續/延遲股不連續（岡崎片段）',
+        '轉錄：DNA→mRNA（RNA聚合酶），翻譯：mRNA→蛋白質（核糖體）',
+        'PCR：變性95°C→黏合55°C→延伸72°C（Taq聚合酶耐熱）',
+        '端粒酶：修補末端重複序列，癌細胞異常活化',
+      ]},
+      { title: '遺傳與演化', points: [
+        '減數分裂I：同源染色體聯會→四分體→互換（遺傳多樣性來源）',
+        '上位基因(epistasis)：一基因蓋過另一基因的表現',
+        'Hardy-Weinberg：p²+2pq+q²=1（大族群/隨機交配/無天擇/無突變/無遷移）',
+        '天擇三種：穩定化、方向性、分裂性選擇',
+      ]},
+      { title: '生理學', points: [
+        '動作電位：靜止-70mV→去極化Na⁺內流→+30mV→再極化K⁺外流',
+        '免疫：先天(巨噬細胞)+後天(T細胞+B細胞)，MHC-I vs MHC-II',
+        '呼吸作用：糖解→丙酮酸→克氏循環→電子傳遞鏈(30-32 ATP)',
+        '光合作用：光反應(類囊體膜)+Calvin循環(基質)，C3/C4/CAM',
+        '植物激素：生長素/吉貝素/細胞分裂素/離層酸/乙烯',
+      ]},
+      { title: '生態學', points: [
+        '族群成長：邏輯斯諦 dN/dt=rN(1-N/K)，K=承載量',
+        'r策略(多生少養) vs K策略(少生多養)',
+        '10%法則：每營養階層傳遞約10%能量',
+        '生物地球化學循環：碳循環、氮循環、磷循環',
+        '生態演替：初級演替(裸地)→次級演替(干擾後)',
+      ]},
+    ],
+  };
+
+  const data = summaries[subject] || [];
+  const scopeRows = EXAM_SCOPE_B2[subject] || [];
+  const note108 = NOTE_UPGRADE_108[subject];
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-8">
+      <div className="max-w-2xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <button onClick={onBack} className="text-gray-500 hover:text-gray-700 font-medium">← 回首頁</button>
+          <div className="text-sm text-gray-500">{subj.icon} {subj.name} 重點整理</div>
+          <div className="text-sm text-gray-400">{subj.range}</div>
+        </div>
+
+        <div className="space-y-6">
+          {note108 && (
+            <div className="summary-card bg-emerald-50 rounded-2xl border border-emerald-200 p-6 fade-in">
+              <h3 className="text-lg font-bold text-emerald-900 mb-2">🎯 108課綱筆記升級</h3>
+              <div className="text-sm text-emerald-800 mb-4">核心對焦：{note108.focus}</div>
+              <ul className="space-y-2 mb-4">
+                {note108.points.map((point, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
+                    <span className="text-emerald-600 mt-0.5 flex-shrink-0">▸</span>
+                    <span>{point}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="bg-white rounded-xl border border-emerald-100 p-3">
+                <div className="text-sm font-bold text-emerald-700 mb-1">速記模板</div>
+                <div className="text-sm text-gray-700 whitespace-pre-line">{note108.template}</div>
+              </div>
+            </div>
+          )}
+          {scopeRows.length > 0 && (
+            <div className="summary-card bg-indigo-50 rounded-2xl border border-indigo-200 p-6 fade-in">
+              <h3 className="text-lg font-bold text-indigo-900 mb-4 pb-2 border-b border-indigo-200">📄 113-2 第二冊段考範圍（高一普）</h3>
+              <div className="space-y-3">
+                {scopeRows.map((item, i) => (
+                  <div key={i} className="bg-white rounded-xl border border-indigo-100 p-3">
+                    <div className="text-sm font-bold text-indigo-700 mb-1">{item.exam}</div>
+                    <div className="text-sm text-gray-700">{item.scope}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {data.map((section, i) => (
+            <div key={i} className="summary-card bg-white rounded-2xl shadow-sm border p-6 fade-in">
+              <h3 className="text-lg font-bold text-gray-800 mb-4 pb-2 border-b">{section.title}</h3>
+              <ul className="space-y-2">
+                {section.points.map((point, j) => (
+                  <li key={j} className="flex items-start gap-2 text-sm text-gray-700">
+                    <span className="text-blue-500 mt-0.5 flex-shrink-0">▸</span>
+                    <span>{point}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-6 bg-yellow-50 rounded-2xl border border-yellow-200 p-4">
+          <div className="font-bold text-yellow-800 mb-2">📝 建議複習順序</div>
+          <div className="text-sm text-gray-600">
+            1. 先看重點整理，建立架構 → 2. 用閃卡記憶關鍵觀念 → 3. 做模擬測驗檢驗自己
+          </div>
+        </div>
+
+        <button onClick={onBack} className="w-full mt-4 py-3 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200">
+          ← 回首頁
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════
+// 🚀 啟動
+// ═══════════════════════════════════════════════
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

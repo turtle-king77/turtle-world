@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>英文段考複習 — 學測頂標特訓</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&family=Inter:wght@400;500;600;700&display=swap');
+* { font-family: 'Noto Sans TC', 'Inter', sans-serif; }
+.eng { font-family: 'Inter', 'Noto Sans TC', sans-serif; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.fade-in { animation: fadeIn 0.3s ease-out; }
+@keyframes correct { 0% { transform: scale(1); } 50% { transform: scale(1.03); } 100% { transform: scale(1); } }
+.pop { animation: correct 0.4s ease; }
+@keyframes shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-6px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(4px); } }
+.shake { animation: shake 0.5s; }
+.flip-card { perspective: 1000px; }
+.flip-card-inner { transition: transform 0.5s; transform-style: preserve-3d; }
+.flip-card.flipped .flip-card-inner { transform: rotateY(180deg); }
+.flip-card-front, .flip-card-back { backface-visibility: hidden; }
+.flip-card-back { transform: rotateY(180deg); }
+</style>
+</head>
+<body class="bg-gray-50">
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useMemo, useRef } = React;
+
+// ═══════════════════════════════════════════════════
+// 📦 頂標級學測英文題庫
+// ═══════════════════════════════════════════════════
+
+const DATA = {
+
+// ─── 第一大題：詞彙題（頂標難度）─────────────────
+vocabulary: {
+  title: '第壹部分：詞彙題',
+  subtitle: '頂標難度 — 進階詞彙 & 陷阱選項',
+  icon: '📝',
+  desc: '學測 1-15 題型・高鑑別度',
+  questions: [
+    {
+      q: 'The new medication proved to be highly _____ in treating the disease, with over 90% of patients showing improvement.',
+      options: ['effective', 'efficient', 'affective', 'affluent'],
+      answer: 0,
+      explain: '★ 頂標陷阱：effective vs efficient\n• effective (adj.) 有效的（能達到預期效果）\n• efficient (adj.) 有效率的（用最少資源達成）\n• affective (adj.) 情感的（心理學用語）\n• affluent (adj.) 富裕的\n\n此題關鍵：treating disease → 療效 → effective\nefficient 強調省時省力，不適合描述藥物療效',
+      tags: ['易混淆', 'Lv5']
+    },
+    {
+      q: 'The politician\'s speech was full of _____ promises that sounded appealing but lacked any concrete plan.',
+      options: ['hollow', 'shallow', 'thorough', 'fellow'],
+      answer: 0,
+      explain: '★ hollow promises = 空洞的承諾（固定搭配）\n• hollow (adj.) 空洞的、空心的\n• shallow (adj.) 淺的、膚淺的\n• thorough (adj.) 徹底的\n• fellow (n./adj.) 同伴的\n\n陷阱：shallow 看似合理，但 shallow promises 不是慣用搭配',
+      tags: ['搭配詞', 'Lv5']
+    },
+    {
+      q: 'Scientists are still trying to _____ the mechanism by which the virus mutates so rapidly.',
+      options: ['unravel', 'uncover', 'unfold', 'undo'],
+      answer: 0,
+      explain: '★ un- 字首系列辨析：\n• unravel (v.) 解開（謎團、機制）→ unravel the mechanism ✓\n• uncover (v.) 揭露（真相、秘密）→ uncover the truth\n• unfold (v.) 展開（故事、事件）→ events unfold\n• undo (v.) 撤銷、解開（扣子）\n\nunravel 含有「抽絲剝繭」的意涵，最適合描述解開複雜機制',
+      tags: ['進階詞彙', 'Lv5']
+    },
+    {
+      q: 'The discovery of antibiotics in the 20th century was a major _____ in the history of medicine.',
+      options: ['breakthrough', 'breakdown', 'breakout', 'breakaway'],
+      answer: 0,
+      explain: '★ break- 複合詞辨析：\n• breakthrough (n.) 突破性進展\n• breakdown (n.) 故障、崩潰\n• breakout (n.) 爆發（疫情、逃獄）\n• breakaway (n./adj.) 脫離的\n\nbreakthrough in medicine/science/technology 是標準搭配',
+      tags: ['複合詞', 'Lv4']
+    },
+    {
+      q: 'The journalist was praised for her _____ reporting, which presented both sides of the story without bias.',
+      options: ['objective', 'subjective', 'obsessive', 'obedient'],
+      answer: 0,
+      explain: '★ objective vs subjective（學測必考）\n• objective (adj.) 客觀的 → 呈現雙方觀點、不偏頗 ✓\n• subjective (adj.) 主觀的\n• obsessive (adj.) 著迷的、強迫的\n• obedient (adj.) 順從的\n\n關鍵線索：both sides / without bias → 客觀',
+      tags: ['對比詞', 'Lv4']
+    },
+    {
+      q: 'Although the two paintings look similar at first glance, a closer inspection reveals _____ differences between them.',
+      options: ['subtle', 'sudden', 'superb', 'supreme'],
+      answer: 0,
+      explain: '★ subtle (adj.) 微妙的、細微的\n乍看相似，但仔細看有「細微」差異\n• sudden (adj.) 突然的 — 語意不合\n• superb (adj.) 極好的 — 不修飾 differences\n• supreme (adj.) 至高的 — 不修飾 differences\n\nsubtle 是學測 Lv5 高頻詞，常搭配 difference, change, hint',
+      tags: ['進階詞彙', 'Lv5']
+    },
+    {
+      q: 'The company has been _____ criticized for its poor treatment of workers in overseas factories.',
+      options: ['severely', 'merely', 'sincerely', 'scarcely'],
+      answer: 0,
+      explain: '★ -ly 副詞辨析（頂標常考）：\n• severely (adv.) 嚴厲地 → severely criticized ✓\n• merely (adv.) 僅僅\n• sincerely (adv.) 真誠地\n• scarcely (adv.) 幾乎不（= hardly）\n\n公司因虐待工人被「嚴厲」批評，severely criticized 是固定搭配',
+      tags: ['副詞', 'Lv5']
+    },
+    {
+      q: 'The _____ of the rainforest is a pressing issue, as millions of acres are destroyed every year.',
+      options: ['deforestation', 'demonstration', 'deterioration', 'determination'],
+      answer: 0,
+      explain: '★ de-/de- 字首系列：\n• deforestation (n.) 毀林、森林砍伐 → rainforest + destroyed ✓\n• demonstration (n.) 示範、示威\n• deterioration (n.) 惡化\n• determination (n.) 決心\n\n陷阱：deterioration 也語意相關，但此處明確指森林被摧毀 → deforestation 最精確',
+      tags: ['進階詞彙', 'Lv6']
+    },
+    {
+      q: 'Parents should _____ their children to think independently rather than simply follow the crowd.',
+      options: ['encourage', 'enforce', 'endure', 'enclose'],
+      answer: 0,
+      explain: '★ en- 字首動詞辨析：\n• encourage (v.) 鼓勵 → encourage sb. to V ✓\n• enforce (v.) 執行、強制（法律）\n• endure (v.) 忍受\n• enclose (v.) 附上、圍住\n\nencourage sb. to V = 鼓勵某人做某事',
+      tags: ['字首', 'Lv4']
+    },
+    {
+      q: 'The professor\'s lecture was so _____ that many students struggled to understand the key concepts.',
+      options: ['abstract', 'absent', 'absolute', 'abundant'],
+      answer: 0,
+      explain: '★ abs- 開頭辨析：\n• abstract (adj.) 抽象的 → 學生難以理解 ✓\n• absent (adj.) 缺席的\n• absolute (adj.) 絕對的\n• abundant (adj.) 豐富的\n\nabstract concepts = 抽象概念，學術場景常見',
+      tags: ['進階詞彙', 'Lv5']
+    },
+    {
+      q: 'It is _____ that all passengers fasten their seatbelts during takeoff and landing.',
+      options: ['mandatory', 'voluntary', 'temporary', 'customary'],
+      answer: 0,
+      explain: '★ -ory/-ary 形容詞辨析：\n• mandatory (adj.) 強制的、必須的 → 繫安全帶是規定 ✓\n• voluntary (adj.) 自願的（反義）\n• temporary (adj.) 暫時的\n• customary (adj.) 習慣性的\n\nmandatory = compulsory = obligatory（同義詞群）',
+      tags: ['進階詞彙', 'Lv6']
+    },
+    {
+      q: 'The athlete\'s remarkable recovery from injury can be _____ to her strong willpower and rigorous training.',
+      options: ['attributed', 'contributed', 'distributed', 'substituted'],
+      answer: 0,
+      explain: '★ 超級陷阱：attribute vs contribute\n• be attributed to = 歸因於（結果 → 原因）✓\n• contribute to = 促成、貢獻（原因 → 結果）\n• distribute = 分配\n• substitute = 替代\n\n此題：恢復（結果）歸因於意志力（原因）→ attributed to\n若改成「意志力促成了恢復」→ contributed to',
+      tags: ['超級陷阱', 'Lv5']
+    },
+    {
+      q: 'The documentary provides a _____ account of the events leading up to the civil war.',
+      options: ['comprehensive', 'comprehensible', 'compulsive', 'compassionate'],
+      answer: 0,
+      explain: '★ compre- 系列辨析：\n• comprehensive (adj.) 全面的、綜合的 ✓\n• comprehensible (adj.) 可理解的\n• compulsive (adj.) 強迫性的\n• compassionate (adj.) 有同情心的\n\ncomprehensive account = 全面的描述',
+      tags: ['易混淆', 'Lv5']
+    },
+    {
+      q: 'The rapid _____ of technology has transformed the way people communicate with one another.',
+      options: ['advancement', 'advertisement', 'adventure', 'adjustment'],
+      answer: 0,
+      explain: '★ adv- 名詞辨析：\n• advancement (n.) 進步、發展 → advancement of technology ✓\n• advertisement (n.) 廣告\n• adventure (n.) 冒險\n• adjustment (n.) 調整\n\n科技的快速「進步」改變了溝通方式',
+      tags: ['詞彙', 'Lv4']
+    },
+    {
+      q: 'Having been _____ to extreme cold for hours, the hikers were at risk of hypothermia.',
+      options: ['exposed', 'supposed', 'proposed', 'composed'],
+      answer: 0,
+      explain: '★ -posed/-posed 分詞辨析：\n• be exposed to = 暴露於 → 暴露在極寒中 ✓\n• be supposed to = 應該\n• proposed = 被提議的\n• composed = 組成的；鎮定的\n\nHaving been exposed to... = 分詞構句（完成式被動）\n文法＋詞彙雙重考點！',
+      tags: ['分詞構句', 'Lv5']
+    },
+  ]
+},
+
+// ─── 第二大題：綜合測驗（頂標）──────────────────
+cloze: {
+  title: '第貳部分：綜合測驗',
+  subtitle: '頂標難度 — 長文克漏字',
+  icon: '📖',
+  desc: '學測 16-30 題型・複雜語境推斷',
+  questions: [
+    {
+      passage: `The concept of "emotional intelligence" (EQ) has gained significant attention in recent decades. __Q1__ traditional intelligence, or IQ, measures cognitive abilities such as logic and reasoning, EQ refers to one's capacity to recognize, understand, and manage emotions — both one's own and those of others.\n\nResearch suggests that people with high EQ tend to __Q2__ better in the workplace. They are more adept at resolving conflicts, building strong relationships, and adapting to change. __Q3__, individuals with low EQ may struggle with teamwork and often find it difficult to __Q4__ constructive criticism without becoming defensive.\n\nInterestingly, unlike IQ, which remains relatively stable throughout adulthood, EQ can be developed and improved over time. Practicing mindfulness, actively listening to others, and reflecting on one's emotional reactions are all strategies that __Q5__ enhancing emotional intelligence.`,
+      questions: [
+        {
+          id: 'Q1', q: '第 1 格',
+          options: ['While', 'Since', 'Unless', 'Until'],
+          answer: 0,
+          explain: '★ While vs Since 辨析：\n• While = 雖然（讓步）/ 當…時 → IQ 測量認知能力，「而」EQ 指情緒能力（對比）✓\n• Since = 因為 / 自從 → 語意不合\n\nWhile 在此表示「對比」，不是「當…的時候」'
+        },
+        {
+          id: 'Q2', q: '第 2 格',
+          options: ['perform', 'inform', 'reform', 'conform'],
+          answer: 0,
+          explain: '★ -form 動詞辨析：\n• perform (v.) 表現 → perform better in the workplace ✓\n• inform (v.) 通知\n• reform (v.) 改革\n• conform (v.) 遵從\n\nperform well/better = 表現良好/更好'
+        },
+        {
+          id: 'Q3', q: '第 3 格',
+          options: ['In contrast', 'In addition', 'In short', 'In return'],
+          answer: 0,
+          explain: '★ 轉折語辨析：\n前面說高 EQ 的優點，後面說低 EQ 的問題 → 對比\n• In contrast = 相反地 ✓\n• In addition = 此外（補充）\n• In short = 簡言之（總結）\n• In return = 作為回報'
+        },
+        {
+          id: 'Q4', q: '第 4 格',
+          options: ['cope with', 'come up with', 'keep up with', 'do away with'],
+          answer: 0,
+          explain: '★ 片語辨析（高頻考點）：\n• cope with = 處理、應對 → 難以應對批評 ✓\n• come up with = 想出（主意）\n• keep up with = 跟上\n• do away with = 廢除\n\ncope with criticism = 應對批評'
+        },
+        {
+          id: 'Q5', q: '第 5 格',
+          options: ['contribute to', 'subscribe to', 'object to', 'resort to'],
+          answer: 0,
+          explain: '★ ___ to + V-ing 片語辨析：\n• contribute to = 有助於 ✓\n• subscribe to = 訂閱；贊同\n• object to = 反對\n• resort to = 訴諸\n\n注意：這四個片語的 to 都是介系詞，後接 V-ing！'
+        }
+      ]
+    },
+    {
+      passage: `In many Asian cultures, the concept of "face" — meaning one's social reputation and dignity — plays a crucial role in interpersonal communication. __Q1__ Westerners tend to value direct and explicit communication, many Asians prefer a more __Q2__ approach to avoid causing embarrassment or discomfort.\n\nFor instance, in a business meeting, a Japanese executive might say "That would be difficult" rather than a flat "No." This __Q3__ refusal allows both parties to maintain their dignity. Similarly, in Taiwan, people often use phrases like "We'll think about it" as a polite way to __Q4__ a request without directly confronting the other person.\n\nCritics argue that this communication style can lead to misunderstandings, particularly in cross-cultural settings. However, __Q5__ contend that understanding these cultural nuances is essential for effective global communication, and that neither direct nor indirect styles are inherently superior.`,
+      questions: [
+        {
+          id: 'Q1', q: '第 1 格',
+          options: ['Whereas', 'Therefore', 'Nonetheless', 'Meanwhile'],
+          answer: 0,
+          explain: '★ Whereas = While（正式對比連接詞）\n西方人直接 vs 亞洲人委婉 → 對比 ✓\n• Therefore = 因此（因果）\n• Nonetheless = 然而（讓步）\n• Meanwhile = 同時'
+        },
+        {
+          id: 'Q2', q: '第 2 格',
+          options: ['indirect', 'inadequate', 'inevitable', 'indifferent'],
+          answer: 0,
+          explain: '★ in- 字首辨析：\n• indirect (adj.) 間接的 → 與 direct 對比 ✓\n• inadequate (adj.) 不足的\n• inevitable (adj.) 不可避免的\n• indifferent (adj.) 漠不關心的'
+        },
+        {
+          id: 'Q3', q: '第 3 格',
+          options: ['implicit', 'explicit', 'illicit', 'elicit'],
+          answer: 0,
+          explain: '★ 超級陷阱：implicit vs explicit\n• implicit (adj.) 含蓄的、暗示的 → 委婉拒絕 ✓\n• explicit (adj.) 明確的、直接的（反義）\n• illicit (adj.) 非法的\n• elicit (v.) 引出\n\nimplicit refusal = 含蓄的拒絕（不直說 No）'
+        },
+        {
+          id: 'Q4', q: '第 4 格',
+          options: ['decline', 'recline', 'incline', 'outline'],
+          answer: 0,
+          explain: '★ -cline/-line 辨析：\n• decline (v.) 婉拒 → 禮貌地「婉拒」請求 ✓\n• recline (v.) 斜躺\n• incline (v.) 傾向\n• outline (v.) 概述\n\ndecline a request/invitation = 婉拒'
+        },
+        {
+          id: 'Q5', q: '第 5 格',
+          options: ['proponents', 'opponents', 'components', 'supplements'],
+          answer: 0,
+          explain: '★ 前面 Critics argue（批評者認為）→ 後面用 _____ contend 反駁\n• proponents (n.) 支持者 → 支持者反駁說… ✓\n• opponents (n.) 反對者\n• components (n.) 組成部分\n• supplements (n.) 補充品\n\n文章結構：critics vs proponents 形成正反論述'
+        }
+      ]
+    }
+  ]
+},
+
+// ─── 第三大題：文意選填（頂標）──────────────────
+fillin: {
+  title: '第參部分：文意選填',
+  subtitle: '頂標難度 — 詞性判斷 + 語意推理',
+  icon: '🧩',
+  desc: '學測 31-40 題型・需精準判斷詞性與搭配',
+  questions: [
+    {
+      passage: `The human brain is remarkably __1__, capable of reorganizing itself by forming new neural connections throughout life. This ability, known as neuroplasticity, is particularly __2__ during childhood, when the brain is developing rapidly. However, research has shown that even adult brains retain a significant degree of __3__.\n\nOne of the most __4__ examples of neuroplasticity involves London taxi drivers. A study found that their hippocampus — the brain region associated with spatial memory — was __5__ larger than that of average individuals. Years of navigating the city's complex streets had literally __6__ the structure of their brains.\n\nThis discovery has __7__ implications for education and rehabilitation. If the brain can physically change in response to experience, then __8__ learning strategies and therapeutic interventions could potentially help people recover from brain injuries. Scientists are now __9__ investigating how to harness neuroplasticity to treat conditions such as stroke, depression, and even Alzheimer's disease. The potential is __10__, but much work remains to be done.`,
+      blanks: 10,
+      options: [
+        '(A) actively', '(B) adaptable', '(C) altered', '(D) considerably',
+        '(E) flexibility', '(F) immense', '(G) pronounced',
+        '(H) profound', '(I) striking', '(J) targeted'
+      ],
+      answers: {
+        1: 1,  // adaptable
+        2: 6,  // pronounced
+        3: 4,  // flexibility
+        4: 8,  // striking
+        5: 3,  // considerably
+        6: 2,  // altered
+        7: 7,  // profound
+        8: 9,  // targeted
+        9: 0,  // actively
+        10: 5, // immense
+      },
+      explains: {
+        1: 'adaptable (adj.) 適應力強的 → The brain is remarkably adaptable（大腦適應力極強）\n★ 空格後有 capable of... → 需要形容詞',
+        2: 'pronounced (adj.) 顯著的、明顯的 → 兒童時期神經可塑性特別「顯著」\n★ particularly + adj. → 需要形容詞',
+        3: 'flexibility (n.) 彈性、靈活性 → a degree of flexibility\n★ degree of + 不可數名詞',
+        4: 'striking (adj.) 引人注目的 → most striking examples\n★ one of the most + adj. + N',
+        5: 'considerably (adv.) 相當地 → considerably larger\n★ 修飾比較級 larger → 需要副詞',
+        6: 'altered (v.) 改變了 → had literally altered the structure\n★ had + p.p.（過去完成式）→ 需要過去分詞',
+        7: 'profound (adj.) 深遠的 → profound implications\n★ profound = deep and significant',
+        8: 'targeted (adj.) 有針對性的 → targeted learning strategies\n★ 修飾名詞 strategies → 需要形容詞',
+        9: 'actively (adv.) 積極地 → actively investigating\n★ 修飾動詞 investigating → 需要副詞',
+        10: 'immense (adj.) 巨大的 → The potential is immense\n★ S + be + adj.（主詞補語）',
+      }
+    }
+  ]
+},
+
+// ─── 第四大題：閱讀測驗（頂標）──────────────────
+reading: {
+  title: '第肆部分：閱讀測驗',
+  subtitle: '頂標難度 — 推論題 + 語氣分析 + 長文',
+  icon: '📚',
+  desc: '學測 41-56 題型・深層理解 & 批判思考',
+  questions: [
+    {
+      title: 'Passage 1 — The Paradox of Choice',
+      passage: `In modern consumer societies, we are constantly told that more choices lead to greater satisfaction. Supermarkets offer dozens of varieties of cereal, streaming services provide thousands of movies, and dating apps present seemingly endless potential partners. Yet psychologist Barry Schwartz argues in his influential book "The Paradox of Choice" that this abundance of options may actually make us less happy, not more.\n\nSchwartz distinguishes between two types of decision-makers: "maximizers" and "satisficers." Maximizers seek the absolute best option, exhaustively comparing alternatives before making a decision. Satisficers, on the other hand, choose the first option that meets their predetermined criteria — one that is "good enough." Counterintuitively, research shows that satisficers tend to be happier with their decisions, even though they may objectively choose inferior options.\n\nThe explanation lies in what economists call "opportunity cost." When maximizers finally make a choice, they cannot help but think about all the alternatives they rejected. This rumination leads to regret and diminished satisfaction. Moreover, with more options available, the expectations for the chosen option rise accordingly. If the result falls short of these inflated expectations — as it inevitably does — disappointment follows.\n\nSchwartz does not advocate eliminating choice altogether, as freedom to choose is a fundamental human value. Instead, he suggests practical strategies: setting personal standards rather than seeking perfection, limiting the number of options we consider, and practicing gratitude for what we have rather than focusing on what we might be missing.`,
+      questions: [
+        {
+          q: 'What is the "paradox" referred to in the title?',
+          options: [
+            'People want more choices but cannot afford them.',
+            'Having more options can lead to less happiness.',
+            'Maximizers always make better decisions than satisficers.',
+            'Consumer societies produce too many low-quality products.'
+          ],
+          answer: 1,
+          explain: '★ 主旨推論題\n悖論(paradox) = 看似矛盾的事實\n一般人以為選擇越多越好，但實際上更多選擇 → 更不快樂\n第一段最後一句直接點明：abundance of options may actually make us less happy'
+        },
+        {
+          q: 'According to the passage, why are satisficers generally happier than maximizers?',
+          options: [
+            'They are more intelligent and make objectively better choices.',
+            'They have fewer options to choose from.',
+            'They do not dwell on rejected alternatives.',
+            'They always choose the cheapest option available.'
+          ],
+          answer: 2,
+          explain: '★ 因果推論題\n第三段解釋：maximizers 做完決定後會一直想著被放棄的選項（rumination）→ 後悔\nsatisficers 選了「夠好的」就停 → 不糾結 → 更快樂\n\n注意 (A) 是陷阱：文中說他們可能 choose inferior options'
+        },
+        {
+          q: 'The word "rumination" in the third paragraph most likely means _____.',
+          options: [
+            'careful financial planning',
+            'repeated and excessive thinking',
+            'efficient problem-solving',
+            'casual and relaxed contemplation'
+          ],
+          answer: 1,
+          explain: '★ 字義推論題（頂標必考題型）\n上下文線索：\n• cannot help but think about all the alternatives\n• leads to regret and diminished satisfaction\nrumination = 反覆思考、鑽牛角尖（負面意涵）\n\n此字源自拉丁文 ruminare（反芻），引申為「反覆咀嚼想法」'
+        },
+        {
+          q: 'What is Schwartz\'s main recommendation?',
+          options: [
+            'Governments should limit the number of products available.',
+            'People should become maximizers to make optimal decisions.',
+            'People should adopt practical strategies to manage the burden of choice.',
+            'Consumers should boycott companies that offer too many options.'
+          ],
+          answer: 2,
+          explain: '★ 作者觀點題\n最後一段：Schwartz 建議實際策略\n① 設個人標準而非追求完美\n② 限制考慮的選項數量\n③ 感恩擁有的，而非執著失去的\n\n他不是要「消除選擇」而是「管理選擇」'
+        },
+        {
+          q: 'Which of the following would Schwartz most likely agree with?',
+          options: [
+            'A person who spends three months comparing every laptop model before buying one will be the most satisfied customer.',
+            'A restaurant with a focused menu of 15 dishes may create a better dining experience than one with 150 options.',
+            'Freedom of choice is overrated and should be restricted by authorities.',
+            'Online shopping is always more stressful than shopping in physical stores.'
+          ],
+          answer: 1,
+          explain: '★ 延伸推論題（最高鑑別度）\nSchwartz 的核心論點：太多選項 → 選擇困難 → 不滿足\n→ 精選少量選項的餐廳 > 選項爆多的餐廳\n\n(A) 反面 — maximizer 行為反而更不快樂\n(C) 錯誤 — 他不主張消除自由\n(D) 過度推論 — 文中沒有比較線上/實體購物'
+        }
+      ]
+    },
+    {
+      title: 'Passage 2 — CRISPR and the Ethics of Gene Editing',
+      passage: `CRISPR-Cas9, often referred to simply as CRISPR, is a revolutionary gene-editing technology that allows scientists to precisely modify DNA sequences in living organisms. Since its development in 2012, CRISPR has transformed biological research and holds enormous potential for treating genetic diseases such as sickle cell anemia, cystic fibrosis, and certain forms of cancer.\n\nThe technology works like molecular scissors: it uses a guide RNA to locate a specific DNA sequence, and then the Cas9 enzyme cuts the DNA at that precise location. Scientists can then delete, replace, or insert genetic material. What makes CRISPR groundbreaking is its accuracy, efficiency, and relatively low cost compared to previous gene-editing methods.\n\nHowever, the technology has sparked intense ethical debates. In 2018, Chinese scientist He Jiankui shocked the world by announcing that he had used CRISPR to edit the genes of twin girls to make them resistant to HIV. The scientific community overwhelmingly condemned this experiment, not because the goal of preventing HIV was objectionable, but because the long-term effects of germline editing — changes that can be passed on to future generations — remain largely unknown.\n\nProponents of strict regulation argue that modifying the human germline crosses a moral boundary. They warn of a "slippery slope" toward designer babies, where wealthy parents could select desirable traits such as intelligence or physical appearance for their children, potentially deepening social inequality. On the other hand, advocates of gene therapy argue that it would be unethical NOT to use this technology if it could eliminate devastating hereditary diseases.\n\nThe debate ultimately revolves around a fundamental question: Should humanity have the power to rewrite its own genetic code? As CRISPR technology continues to advance at a breathtaking pace, society must grapple with this question before the technology outpaces our ability to govern it responsibly.`,
+      questions: [
+        {
+          q: 'What is the primary purpose of this passage?',
+          options: [
+            'To promote the use of CRISPR technology in hospitals.',
+            'To explain CRISPR technology and discuss its ethical implications.',
+            'To argue that gene editing should be completely banned.',
+            'To compare CRISPR with other medical treatments for genetic diseases.'
+          ],
+          answer: 1,
+          explain: '★ 主旨題\n文章結構：\n① 介紹 CRISPR 是什麼\n② 解釋運作原理\n③④ 討論倫理爭議（正反兩方）\n⑤ 提出核心問題\n\n→ 解釋 + 探討倫理 = (B)'
+        },
+        {
+          q: 'According to the passage, why was He Jiankui\'s experiment condemned?',
+          options: [
+            'Because preventing HIV is considered an unworthy medical goal.',
+            'Because CRISPR technology is too expensive for widespread use.',
+            'Because the long-term effects of inheritable gene changes are unknown.',
+            'Because the twin girls did not consent to the experiment.'
+          ],
+          answer: 2,
+          explain: '★ 細節理解題（含陷阱）\n第三段明確指出：condemned NOT because preventing HIV was objectionable（不是因為目標不對）\n而是因為 germline editing 的 long-term effects remain largely unknown\n\n(A) 是反面陷阱 — 文中說目標「不是」問題所在'
+        },
+        {
+          q: 'What does the phrase "slippery slope" in the fourth paragraph imply?',
+          options: [
+            'Gene editing will become increasingly affordable over time.',
+            'One controversial use of technology could gradually lead to more extreme applications.',
+            'Scientific research always progresses in a downward direction.',
+            'The technology will eventually fail and be abandoned.'
+          ],
+          answer: 1,
+          explain: '★ 隱喻理解題（頂標鑑別）\nslippery slope（滑坡效應）= 一旦開始就可能越走越極端\n上下文：修改基因 → designer babies → 加深社會不平等\n= 從治療疾病滑向「訂製嬰兒」的極端\n\n這是論證手法中的「滑坡謬誤/滑坡論證」'
+        },
+        {
+          q: 'What can be inferred about the author\'s stance on gene editing?',
+          options: [
+            'The author strongly supports the use of CRISPR without restrictions.',
+            'The author believes gene editing should be permanently prohibited.',
+            'The author presents both sides and emphasizes the need for responsible governance.',
+            'The author is primarily concerned about the cost of CRISPR technology.'
+          ],
+          answer: 2,
+          explain: '★ 作者立場推論（最高難度）\n作者不偏袒任何一方：\n• 介紹支持者（eliminate diseases）\n• 也介紹反對者（slippery slope）\n• 最後結論：society must grapple with this question / govern it responsibly\n\n→ 中立呈現 + 呼籲負責任的治理 = (C)'
+        },
+        {
+          q: 'Which of the following best describes the structure of this passage?',
+          options: [
+            'Problem → Solution → Evaluation',
+            'Introduction → Mechanism → Ethical Debate → Open Question',
+            'Thesis → Antithesis → Synthesis',
+            'Chronological narration from past to present'
+          ],
+          answer: 1,
+          explain: '★ 文章結構題（頂標必考）\n¶1 Introduction（介紹 CRISPR）\n¶2 Mechanism（運作原理）\n¶3-4 Ethical Debate（正反方論述）\n¶5 Open Question（留下開放問題）\n\n此為「說明文 + 議論文」混合結構'
+        }
+      ]
+    }
+  ]
+},
+
+// ─── 閃卡：頂標進階單字 ──────────────────────────
+flashcards: {
+  title: '頂標核心詞彙',
+  icon: '📇',
+  desc: 'Lv5-6 高頻進階詞 + 學測常考搭配',
+  cards: [
+    { q: 'attribute A to B\nvs.\ncontribute to', a: '★ 學測第一陷阱\n\nattribute A to B = 把 A 歸因於 B（結果→原因）\nHis success is attributed to hard work.\n他的成功歸因於努力。\n\ncontribute to = 促成、貢獻（原因→結果）\nHard work contributed to his success.\n努力促成了他的成功。\n\n方向相反！' },
+    { q: 'effective vs. efficient', a: 'effective (adj.) 有效的 → 能達成目標\nThe medicine is effective against the flu.\n\nefficient (adj.) 有效率的 → 用最少資源\nShe is an efficient worker.\n\n★ effective = 有沒有效\n★ efficient = 快不快、省不省' },
+    { q: 'comprehensive\nvs. comprehensible', a: 'comprehensive (adj.) 全面的、綜合的\na comprehensive review 全面的回顧\n\ncomprehensible (adj.) 可理解的\nThe instructions are comprehensible.\n說明書是看得懂的\n\n★ -ive = 包含一切的\n★ -ible = 能被理解的' },
+    { q: 'implicit vs. explicit', a: 'implicit (adj.) 含蓄的、暗示的\nan implicit warning 暗示的警告\n\nexplicit (adj.) 明確的、直接的\nexplicit instructions 明確的指示\n\n★ implicit = 沒有直說但暗含其中\n★ explicit = 清楚明白地說出來\n★ 兩者互為反義詞' },
+    { q: 'objective vs. subjective', a: 'objective (adj.) 客觀的\nobjective analysis 客觀分析\n\nsubjective (adj.) 主觀的\nsubjective opinion 主觀意見\n\n★ 記法：object = 物體（客觀外在）\n★ subject = 主詞/主體（主觀內在）' },
+    { q: 'be supposed to\nvs. be exposed to\nvs. be composed of\nvs. be opposed to', a: '★ -posed/-posed 大家族：\n\nbe supposed to V = 應該\nbe exposed to N = 暴露於\nbe composed of N = 由…組成\nbe opposed to N/V-ing = 反對\n\n全部都是超高頻考點！' },
+    { q: 'despite / in spite of\nvs. although / though', a: '★ 讓步語氣的兩種寫法：\n\n介系詞（+ N/V-ing）：\nDespite the rain, we went out.\nIn spite of being tired, he kept working.\n\n連接詞（+ S+V）：\nAlthough it rained, we went out.\nThough he was tired, he kept working.\n\n★ 不能混用：\nDespite it rained ✗\nAlthough the rain ✗' },
+    { q: 'cope with\nvs. deal with\nvs. handle', a: '都有「處理」的意思，但語感不同：\n\ncope with = 應對（強調困難、壓力）\nShe learned to cope with stress.\n\ndeal with = 處理（中性，最常用）\nWe need to deal with this problem.\n\nhandle = 處理（強調能力）\nCan you handle this situation?' },
+    { q: 'remarkable / striking\n/ outstanding / notable', a: '★「引人注目」同義詞群：\n\nremarkable = 非凡的（值得評論的）\nstriking = 醒目的、驚人的\noutstanding = 傑出的（超越他人）\nnotable = 值得注意的\n\n學測愛考同義替換！\na remarkable achievement\n= a striking/outstanding/notable achievement' },
+    { q: 'tend to vs. tendency\nvs. trend', a: 'tend to V (v.) = 傾向於做…\nPeople tend to eat more in winter.\n\ntendency (n.) = 傾向\nThere is a tendency to overeat.\n\ntrend (n.) = 趨勢（社會性的大方向）\nthe trend of online shopping\n\n★ tendency = 個人傾向\n★ trend = 社會趨勢' },
+    { q: 'proponent vs. opponent\nvs. component', a: 'proponent (n.) 支持者（pro- = 支持）\nProponents of the plan argued that...\n\nopponent (n.) 反對者（op- = 對立）\nOpponents criticized the policy.\n\ncomponent (n.) 組成部分（com- = 共同）\nkey components of the system\n\n★ 學測議論文必出！' },
+    { q: 'whereas / while（對比）', a: '★ 用於對比兩個事實：\n\nMen tend to be taller, whereas/while\nwomen tend to live longer.\n男性通常較高，而女性通常較長壽。\n\nwhereas 比 while 更正式\n兩者在對比用法上可互換\n\n注意：while 還有「當…的時候」的意思\nwhereas 只有對比意思，不會歧義' },
+    { q: 'severe / harsh / rigid\n/ strict / stern', a: '★「嚴格/嚴厲」同義詞群：\n\nsevere = 嚴重的、嚴厲的\n  severe weather / severe punishment\nharsh = 嚴苛的（環境、批評）\n  harsh criticism / harsh conditions\nrigid = 僵硬的、嚴格的（規則）\n  rigid rules / rigid schedule\nstrict = 嚴格的（人、規定）\n  strict teacher / strict regulations\nstern = 嚴肅的（表情、態度）\n  a stern look / stern warning' },
+    { q: 'significantly / considerably\n/ substantially / dramatically', a: '★「顯著地」副詞群（學測愛考）：\n\nsignificantly = 顯著地（統計學常用）\nconsiderably = 相當地（程度大）\nsubstantially = 實質上地\ndramatically = 戲劇性地\n\n都可修飾 increase/decrease/improve/change\n\nThe population has significantly increased.\n= considerably/substantially/dramatically increased.' },
+    { q: 'be attributed to\nvs. be accustomed to\nvs. be committed to\nvs. be devoted to', a: '★ be + p.p. + to（介系詞）大集合：\n\nbe attributed to = 歸因於\nbe accustomed to = 習慣於（= be used to）\nbe committed to = 致力於\nbe devoted to = 奉獻於\n\n注意：to 後面都接 N 或 V-ing！\nHe is committed to improving education.\n他致力於改善教育。' },
+  ]
+}
+};
+
+// ═══════════════════════════════════════════════════
+// 🎨 主應用程式（與之前相同的架構，精簡版）
+// ═══════════════════════════════════════════════════
+
+function App() {
+  const [view, setView] = useState('home');
+  const [section, setSection] = useState(null);
+  const [scores, setScores] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('eng-scores-v2') || '{}'); } catch { return {}; }
+  });
+  useEffect(() => { localStorage.setItem('eng-scores-v2', JSON.stringify(scores)); }, [scores]);
+  const goHome = () => { setView('home'); setSection(null); };
+  if (view === 'home') return <Home scores={scores} onSelect={(s) => { setSection(s); setView('study'); }} />;
+  if (section === 'flashcards') return <FlashcardMode onBack={goHome} />;
+  if (section === 'vocabulary') return <VocabQuiz onBack={goHome} onFinish={(s,t) => setScores(p => ({...p, vocab: [...(p.vocab||[]), {s,t,d:Date.now()}]}))} />;
+  if (section === 'cloze') return <ClozeTest onBack={goHome} onFinish={(s,t) => setScores(p => ({...p, cloze: [...(p.cloze||[]), {s,t,d:Date.now()}]}))} />;
+  if (section === 'fillin') return <FillInTest onBack={goHome} onFinish={(s,t) => setScores(p => ({...p, fillin: [...(p.fillin||[]), {s,t,d:Date.now()}]}))} />;
+  if (section === 'reading') return <ReadingTest onBack={goHome} onFinish={(s,t) => setScores(p => ({...p, reading: [...(p.reading||[]), {s,t,d:Date.now()}]}))} />;
+  return <Home scores={scores} onSelect={(s) => { setSection(s); setView('study'); }} />;
+}
+
+function Home({ scores, onSelect }) {
+  const sections = [
+    { key: 'flashcards', ...DATA.flashcards, color: 'from-teal-500 to-cyan-500', bg: 'bg-teal-50 border-teal-200' },
+    { key: 'vocabulary', ...DATA.vocabulary, color: 'from-blue-500 to-indigo-500', bg: 'bg-blue-50 border-blue-200' },
+    { key: 'cloze', ...DATA.cloze, color: 'from-purple-500 to-violet-500', bg: 'bg-purple-50 border-purple-200' },
+    { key: 'fillin', ...DATA.fillin, color: 'from-amber-500 to-orange-500', bg: 'bg-amber-50 border-amber-200' },
+    { key: 'reading', ...DATA.reading, color: 'from-rose-500 to-pink-500', bg: 'bg-rose-50 border-rose-200' },
+  ];
+  const daysLeft = Math.max(0, Math.ceil((new Date('2026-03-26') - new Date()) / 86400000));
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-4 md:p-8">
+      <div className="max-w-3xl mx-auto">
+        <div className="text-center mb-8">
+          <div className="text-5xl mb-3">⚡</div>
+          <h1 className="text-3xl md:text-4xl font-black text-white">英文頂標特訓</h1>
+          <p className="text-indigo-300 mt-1">學測題型 × 頂標難度 — B2 U1-U3</p>
+          <div className="inline-flex items-center gap-2 mt-3 px-5 py-2 rounded-full font-bold text-white bg-gradient-to-r from-red-500 to-orange-500">
+            ⏰ 倒數 {daysLeft} 天
+          </div>
+          <div className="mt-2">
+            <span className="inline-block px-3 py-1 bg-yellow-500/20 text-yellow-300 text-xs rounded-full font-bold">🏆 目標：頂標 (Top 12%)</span>
+          </div>
+        </div>
+
+        <a href="index.html" className="block mb-6 text-center text-indigo-400 hover:text-indigo-300 font-medium text-sm">← 回全科首頁</a>
+
+        <div className="bg-white/5 backdrop-blur rounded-2xl border border-white/10 p-5 mb-6">
+          <h2 className="font-bold text-lg mb-3 text-white">📊 頂標鑑別重點</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-center text-xs">
+            {[
+              { n: '易混淆詞', eg: 'effective/efficient' },
+              { n: '進階片語', eg: 'attribute to/contribute to' },
+              { n: '字義推論', eg: '從上下文猜詞義' },
+              { n: '推論題', eg: '作者立場/延伸推論' },
+            ].map((t, i) => (
+              <div key={i} className="bg-white/10 rounded-lg p-3">
+                <div className="font-bold text-white">{t.n}</div>
+                <div className="text-indigo-300 mt-1">{t.eg}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          {sections.map((sec) => {
+            const history = scores[sec.key === 'vocabulary' ? 'vocab' : sec.key] || [];
+            const best = history.length > 0 ? Math.max(...history.map(h => Math.round(h.s/h.t*100))) : null;
+            return (
+              <button key={sec.key} onClick={() => onSelect(sec.key)}
+                className="w-full text-left bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition fade-in group">
+                <div className="flex items-center gap-4">
+                  <div className="text-3xl">{sec.icon}</div>
+                  <div className="flex-1">
+                    <div className="font-bold text-lg text-white">{sec.title}</div>
+                    <div className="text-sm text-indigo-300">{sec.desc}</div>
+                  </div>
+                  <div className="text-right">
+                    {best !== null && (
+                      <div className={`text-sm font-bold ${best >= 80 ? 'text-green-400' : best >= 60 ? 'text-orange-400' : 'text-red-400'}`}>
+                        最高 {best}%
+                      </div>
+                    )}
+                    <div className="text-2xl text-white/30 group-hover:text-white/60 transition">→</div>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mt-6 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-5">
+          <h3 className="font-bold text-yellow-300 mb-2">🎯 頂標破關攻略</h3>
+          <ul className="text-sm text-indigo-200 space-y-1">
+            <li>▸ <strong className="text-white">詞彙題</strong>：不只看「對的」，更要知道每個選項「為什麼錯」</li>
+            <li>▸ <strong className="text-white">綜合測驗</strong>：注意轉折語（however/whereas/in contrast）和文章邏輯走向</li>
+            <li>▸ <strong className="text-white">文意選填</strong>：先分詞性 → 再看語意 → 最後確認搭配</li>
+            <li>▸ <strong className="text-white">閱讀測驗</strong>：推論題才是鑑別關鍵——找作者「沒有直說但暗示」的資訊</li>
+            <li>▸ <strong className="text-white">時間分配</strong>：詞彙 10 分鐘、克漏字 15 分鐘、選填 10 分鐘、閱讀 30 分鐘</li>
+          </ul>
+        </div>
+
+        <div className="text-center mt-6 text-indigo-500 text-xs">英文頂標特訓 v2.0 | 高鑑別度題組</div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════
+// 📇 閃卡
+// ═══════════════════════════════════════════════════
+function FlashcardMode({ onBack }) {
+  const cards = DATA.flashcards.cards;
+  const [idx, setIdx] = useState(0);
+  const [flipped, setFlipped] = useState(false);
+  const [known, setKnown] = useState([]);
+  const [unknown, setUnknown] = useState([]);
+  if (idx >= cards.length) {
+    return <ResultScreen title="閃卡完成！" icon="📇" correct={known.length} total={cards.length}
+      wrongItems={unknown.map(i => cards[i].q)} onRetry={() => { setIdx(0); setFlipped(false); setKnown([]); setUnknown([]); }} onBack={onBack} />;
+  }
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 to-cyan-50 p-4 md:p-8">
+      <div className="max-w-lg mx-auto">
+        <Header onBack={onBack} title="📇 頂標詞彙閃卡" progress={idx} total={cards.length} color="teal" />
+        <div className={`flip-card cursor-pointer ${flipped ? 'flipped' : ''} mt-6`} onClick={() => setFlipped(!flipped)} style={{ height: '360px' }}>
+          <div className="flip-card-inner relative w-full h-full">
+            <div className="flip-card-front absolute w-full h-full bg-white rounded-2xl shadow-lg border-2 border-teal-100 flex items-center justify-center p-8">
+              <div className="text-center">
+                <div className="text-xs text-teal-400 mb-6">點擊翻牌</div>
+                <div className="text-2xl font-bold text-gray-800 eng whitespace-pre-line">{cards[idx].q}</div>
+              </div>
+            </div>
+            <div className="flip-card-back absolute w-full h-full bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-lg flex items-center justify-center p-6 overflow-auto">
+              <div className="text-white whitespace-pre-line text-sm leading-relaxed">{cards[idx].a}</div>
+            </div>
+          </div>
+        </div>
+        <div className="flex gap-3 mt-6">
+          <button onClick={() => { setUnknown([...unknown, idx]); setFlipped(false); setTimeout(() => setIdx(i=>i+1), 150); }}
+            className="flex-1 py-4 bg-red-100 text-red-600 rounded-xl font-bold text-lg hover:bg-red-200">✗ 不熟</button>
+          <button onClick={() => { setKnown([...known, idx]); setFlipped(false); setTimeout(() => setIdx(i=>i+1), 150); }}
+            className="flex-1 py-4 bg-green-100 text-green-600 rounded-xl font-bold text-lg hover:bg-green-200">✓ 會了</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════
+// 📝 詞彙題
+// ═══════════════════════════════════════════════════
+function VocabQuiz({ onBack, onFinish }) {
+  const qs = useMemo(() => [...DATA.vocabulary.questions].sort(() => Math.random() - 0.5), []);
+  const [idx, setIdx] = useState(0);
+  const [sel, setSel] = useState(null);
+  const [score, setScore] = useState(0);
+  const [wrongs, setWrongs] = useState([]);
+  if (idx >= qs.length) { onFinish(score, qs.length); return <ResultScreen title="詞彙題完成！" icon="📝" correct={score} total={qs.length} wrongItems={wrongs} onRetry={() => { setIdx(0); setSel(null); setScore(0); setWrongs([]); }} onBack={onBack} />; }
+  const q = qs[idx];
+  const handleSel = (i) => { if (sel !== null) return; setSel(i); if (i === q.answer) setScore(s=>s+1); else setWrongs(w=>[...w, q.options[q.answer] + ' — ' + (q.tags||[]).join(', ')]); };
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-4 md:p-8">
+      <div className="max-w-lg mx-auto">
+        <Header onBack={onBack} title="📝 詞彙題（頂標）" progress={idx} total={qs.length} color="blue" />
+        <div className="bg-white rounded-2xl shadow-lg border p-6 mt-6 fade-in">
+          {q.tags && <div className="flex gap-2 mb-3">{q.tags.map((t,i) => <span key={i} className="px-2 py-0.5 bg-indigo-100 text-indigo-600 text-xs rounded-full font-medium">{t}</span>)}</div>}
+          <div className="text-lg font-medium text-gray-800 eng leading-relaxed mb-6">{q.q}</div>
+          <Options options={q.options} selected={sel} answer={q.answer} onSelect={handleSel} />
+        </div>
+        {sel !== null && (<><ExplainBox correct={sel===q.answer} text={q.explain} /><button onClick={() => { setSel(null); setIdx(i=>i+1); }} className="w-full mt-4 py-4 bg-indigo-600 text-white rounded-xl font-bold text-lg hover:bg-indigo-700">{idx+1>=qs.length?'查看結果 →':'下一題 →'}</button></>)}
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════
+// 📖 綜合測驗
+// ═══════════════════════════════════════════════════
+function ClozeTest({ onBack, onFinish }) {
+  const passages = DATA.cloze.questions;
+  const [pIdx, setPIdx] = useState(0);
+  const [qIdx, setQIdx] = useState(0);
+  const [sel, setSel] = useState(null);
+  const [score, setScore] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [wrongs, setWrongs] = useState([]);
+  const [done, setDone] = useState(false);
+  if (done) { onFinish(score, total); return <ResultScreen title="綜合測驗完成！" icon="📖" correct={score} total={total} wrongItems={wrongs} onRetry={() => { setPIdx(0); setQIdx(0); setSel(null); setScore(0); setTotal(0); setWrongs([]); setDone(false); }} onBack={onBack} />; }
+  const p = passages[pIdx]; const q = p.questions[qIdx];
+  const allTotal = passages.reduce((s,p)=>s+p.questions.length,0);
+  const currentNum = passages.slice(0,pIdx).reduce((s,p)=>s+p.questions.length,0)+qIdx;
+  const handleSel = (i) => { if(sel!==null)return; setSel(i); setTotal(t=>t+1); if(i===q.answer)setScore(s=>s+1); else setWrongs(w=>[...w,`${q.id}: ${q.options[q.answer]}`]); };
+  const handleNext = () => { setSel(null); if(qIdx+1<p.questions.length)setQIdx(qi=>qi+1); else if(pIdx+1<passages.length){setPIdx(pi=>pi+1);setQIdx(0);} else setDone(true); };
+  const hp = p.passage.replace(new RegExp(`__${q.id}__`,'g'),`【 ${q.id} 】`);
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-violet-50 p-4 md:p-8">
+      <div className="max-w-2xl mx-auto">
+        <Header onBack={onBack} title="📖 綜合測驗（頂標）" progress={currentNum} total={allTotal} color="purple" />
+        <div className="bg-white rounded-2xl shadow-lg border p-6 mt-6">
+          <div className="text-sm text-purple-400 mb-2">第 {pIdx+1} 篇</div>
+          <div className="eng text-gray-700 leading-relaxed whitespace-pre-line text-sm bg-gray-50 rounded-xl p-4 mb-6">{hp}</div>
+          <div className="border-t pt-4">
+            <div className="font-bold text-purple-600 mb-3">▸ {q.id}</div>
+            <Options options={q.options} selected={sel} answer={q.answer} onSelect={handleSel} />
+          </div>
+        </div>
+        {sel!==null&&(<><ExplainBox correct={sel===q.answer} text={q.explain} /><button onClick={handleNext} className="w-full mt-4 py-4 bg-purple-600 text-white rounded-xl font-bold text-lg hover:bg-purple-700">{(qIdx+1>=p.questions.length&&pIdx+1>=passages.length)?'查看結果 →':'下一題 →'}</button></>)}
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════
+// 🧩 文意選填
+// ═══════════════════════════════════════════════════
+function FillInTest({ onBack, onFinish }) {
+  const data = DATA.fillin.questions[0];
+  const [current, setCurrent] = useState(1);
+  const [answers, setAnswers] = useState({});
+  const [showResult, setShowResult] = useState(false);
+  const [sel, setSel] = useState(null);
+  const usedOptions = Object.values(answers);
+  const availableOptions = data.options.map((opt,i)=>({text:opt,idx:i,used:usedOptions.includes(i)}));
+  if (showResult) {
+    const correct = Object.entries(answers).filter(([k,v])=>data.answers[k]===v).length;
+    onFinish(correct, data.blanks);
+    const wrongs = Object.entries(answers).filter(([k,v])=>data.answers[k]!==v).map(([k])=>`第${k}格：正確 ${data.options[data.answers[k]]}`);
+    return <ResultScreen title="文意選填完成！" icon="🧩" correct={correct} total={data.blanks} wrongItems={wrongs}
+      extraContent={<div className="bg-gray-50 rounded-xl p-4 text-left text-xs mt-4 max-h-64 overflow-auto"><div className="font-bold mb-2">📖 詳解：</div>{Object.entries(data.answers).map(([k,v])=>(<div key={k} className={`mb-2 ${answers[k]===v?'text-green-600':'text-red-600'}`}><strong>第{k}格</strong>：{data.options[v]}<br/><span className="text-gray-500">{data.explains[k]}</span></div>))}</div>}
+      onRetry={()=>{setCurrent(1);setAnswers({});setShowResult(false);setSel(null);}} onBack={onBack} />;
+  }
+  const handleSelect = (i) => { if(availableOptions[i].used)return; setSel(i); };
+  const handleConfirm = () => { if(sel===null)return; setAnswers({...answers,[current]:sel}); setSel(null); if(current<data.blanks)setCurrent(c=>c+1); else setShowResult(true); };
+  const pw = data.passage.replace(/__(\d+)__/g,(_,n)=>{if(answers[n]!==undefined)return`[${data.options[answers[n]]}]`;if(parseInt(n)===current)return`【＿${n}＿】`;return`＿${n}＿`;});
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50 p-4 md:p-8">
+      <div className="max-w-2xl mx-auto">
+        <Header onBack={onBack} title="🧩 文意選填（頂標）" progress={current-1} total={data.blanks} color="amber" />
+        <div className="bg-white rounded-2xl shadow-lg border p-6 mt-6">
+          <div className="eng text-gray-700 leading-relaxed whitespace-pre-line text-sm bg-gray-50 rounded-xl p-4 mb-4">{pw}</div>
+          <div className="font-bold text-amber-700 mb-3">▸ 第 {current} 格：</div>
+          <div className="grid grid-cols-2 gap-2">
+            {availableOptions.map((opt,i)=>(<button key={i} onClick={()=>handleSelect(i)} disabled={opt.used}
+              className={`text-left p-3 rounded-xl border-2 text-sm eng transition ${opt.used?'bg-gray-100 border-gray-200 text-gray-300 cursor-not-allowed line-through':sel===i?'bg-amber-100 border-amber-400 text-amber-800 font-bold':'bg-white border-gray-200 hover:border-amber-300 cursor-pointer'}`}>{opt.text}</button>))}
+          </div>
+          {sel!==null&&<button onClick={handleConfirm} className="w-full mt-4 py-3 bg-amber-500 text-white rounded-xl font-bold hover:bg-amber-600">確認 →</button>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════
+// 📚 閱讀測驗
+// ═══════════════════════════════════════════════════
+function ReadingTest({ onBack, onFinish }) {
+  const passages = DATA.reading.questions;
+  const [pIdx, setPIdx] = useState(0);
+  const [qIdx, setQIdx] = useState(0);
+  const [sel, setSel] = useState(null);
+  const [score, setScore] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [wrongs, setWrongs] = useState([]);
+  const [done, setDone] = useState(false);
+  if(done){onFinish(score,total);return <ResultScreen title="閱讀測驗完成！" icon="📚" correct={score} total={total} wrongItems={wrongs} onRetry={()=>{setPIdx(0);setQIdx(0);setSel(null);setScore(0);setTotal(0);setWrongs([]);setDone(false);}} onBack={onBack}/>;}
+  const p=passages[pIdx];const q=p.questions[qIdx];
+  const allTotal=passages.reduce((s,p)=>s+p.questions.length,0);
+  const currentNum=passages.slice(0,pIdx).reduce((s,p)=>s+p.questions.length,0)+qIdx;
+  const handleSel=(i)=>{if(sel!==null)return;setSel(i);setTotal(t=>t+1);if(i===q.answer)setScore(s=>s+1);else setWrongs(w=>[...w,q.q.substring(0,40)+'...']);};
+  const handleNext=()=>{setSel(null);if(qIdx+1<p.questions.length)setQIdx(qi=>qi+1);else if(pIdx+1<passages.length){setPIdx(pi=>pi+1);setQIdx(0);}else setDone(true);};
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-rose-50 to-pink-50 p-4 md:p-8">
+      <div className="max-w-2xl mx-auto">
+        <Header onBack={onBack} title="📚 閱讀測驗（頂標）" progress={currentNum} total={allTotal} color="rose" />
+        <div className="bg-white rounded-2xl shadow-lg border p-6 mt-6">
+          <div className="text-sm text-rose-400 mb-2">{p.title} — 題 {qIdx+1}/{p.questions.length}</div>
+          <details className="mb-4" open>
+            <summary className="cursor-pointer text-rose-600 font-bold text-sm mb-2">📄 文章（點擊收合）</summary>
+            <div className="eng text-gray-700 leading-relaxed whitespace-pre-line text-sm bg-gray-50 rounded-xl p-4">{p.passage}</div>
+          </details>
+          <div className="border-t pt-4">
+            <div className="font-bold text-gray-800 eng mb-4">{q.q}</div>
+            <Options options={q.options} selected={sel} answer={q.answer} onSelect={handleSel} />
+          </div>
+        </div>
+        {sel!==null&&(<><ExplainBox correct={sel===q.answer} text={q.explain} /><button onClick={handleNext} className="w-full mt-4 py-4 bg-rose-600 text-white rounded-xl font-bold text-lg hover:bg-rose-700">{(qIdx+1>=p.questions.length&&pIdx+1>=passages.length)?'查看結果 →':'下一題 →'}</button></>)}
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════
+// 🧱 共用元件
+// ═══════════════════════════════════════════════════
+function Header({onBack,title,progress,total,color}) {
+  const colors = {teal:'#14b8a6',blue:'#4f46e5',purple:'#7c3aed',amber:'#d97706',rose:'#e11d48'};
+  return (<><div className="flex items-center justify-between mb-2"><button onClick={onBack} className="text-gray-500 hover:text-gray-700 font-medium text-sm">← 返回</button><div className="text-sm text-gray-500 font-medium">{title}</div><div className="text-sm font-bold text-gray-700">{progress}/{total}</div></div><div className="w-full bg-gray-200 rounded-full h-2"><div className="h-2 rounded-full transition-all duration-300" style={{width:`${(progress/total)*100}%`,backgroundColor:colors[color]||'#3b82f6'}}></div></div></>);
+}
+function Options({options,selected,answer,onSelect}) {
+  return (<div className="space-y-3">{options.map((opt,i)=>{let cls='bg-gray-50 border-gray-200 hover:bg-blue-50 hover:border-blue-300 cursor-pointer';if(selected!==null){if(i===answer)cls='bg-green-100 border-green-400 text-green-800 pop';else if(i===selected)cls='bg-red-100 border-red-400 text-red-800 shake';else cls='bg-gray-50 border-gray-200 opacity-40';}return(<button key={i} onClick={()=>onSelect(i)} className={`w-full text-left p-4 rounded-xl border-2 transition eng text-sm ${cls}`}><span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-white border text-xs mr-3 flex-shrink-0">{String.fromCharCode(65+i)}</span>{opt}</button>);})}</div>);
+}
+function ExplainBox({correct,text}) {
+  return (<div className={`mt-4 p-5 rounded-2xl border-2 fade-in ${correct?'bg-green-50 border-green-200':'bg-red-50 border-red-200'}`}><div className={`font-bold mb-2 ${correct?'text-green-700':'text-red-700'}`}>{correct?'✅ 正確！':'❌ 錯了！看解析 ↓'}</div><div className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">{text}</div></div>);
+}
+function ResultScreen({title,icon,correct,total,wrongItems=[],extraContent,onRetry,onBack}) {
+  const pct=Math.round(correct/total*100);
+  return (<div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-8 flex items-center justify-center"><div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center fade-in"><div className="text-5xl mb-3">{pct>=80?'🌟':pct>=60?'👍':'💪'}</div><h2 className="text-2xl font-bold mb-2">{icon} {title}</h2><div className={`text-5xl font-black my-4 ${pct>=80?'text-green-500':pct>=60?'text-orange-500':'text-red-500'}`}>{pct}%</div><div className="text-gray-500 mb-2">{correct} / {total} 答對</div><div className="text-sm text-gray-400 mb-4">{pct>=90?'頂標穩了 🏆':pct>=80?'很接近了，再練幾次！':pct>=60?'繼續加強易混淆詞！':'別灰心，仔細看解析再來一次'}</div>{wrongItems.length>0&&<div className="bg-red-50 rounded-xl p-4 mb-4 text-left max-h-48 overflow-auto"><div className="font-bold text-sm text-red-600 mb-2">❌ 需加強：</div>{wrongItems.map((item,i)=><div key={i} className="text-xs text-gray-600 mb-1">• {item}</div>)}</div>}{extraContent}<div className="space-y-2 mt-4"><button onClick={onRetry} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700">🔄 再做一次</button><button onClick={onBack} className="w-full py-3 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200">← 返回</button></div></div></div>);
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

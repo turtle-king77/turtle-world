@@ -1,0 +1,23 @@
+# Sensitive files
+.env
+token.json
+google-auth/token.json
+
+# OS
+.DS_Store
+
+# Large model files
+models/
+*.bin
+*.pth
+*.index
+
+# Temp files
+*.tmp
+*.swo
+*.swp
+firebase-debug.log
+node_modules/
+
+# PDF copies
+113-2高一普.pdf

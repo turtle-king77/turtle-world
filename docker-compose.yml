@@ -1,0 +1,51 @@
+name: turtle-plan
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: n8n
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: n8n
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -h localhost -U n8n']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  n8n:
+    image: n8nio/n8n:latest
+    ports:
+      - '5678:5678'
+    environment:
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_DATABASE=n8n
+      - DB_POSTGRESDB_USER=n8n
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      - WEBHOOK_URL=http://localhost:5678/
+      - GENERIC_TIMEZONE=Asia/Taipei
+      - TZ=Asia/Taipei
+      # API keys
+      - NOTION_TOKEN=${NOTION_TOKEN}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      # Ollama 本地 AI（透過 host.docker.internal 連線）
+      - OLLAMA_HOST=http://host.docker.internal:11434
+      # 本地開發用，關閉 secure cookie（localhost 不支援 HTTPS）
+      - N8N_SECURE_COOKIE=false
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  n8n_data:

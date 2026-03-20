@@ -1,0 +1,29 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "n8n-stack",
+      "runtimeExecutable": "docker",
+      "runtimeArgs": ["compose", "up"],
+      "port": 5678
+    },
+    {
+      "name": "ollama",
+      "runtimeExecutable": "ollama",
+      "runtimeArgs": ["serve"],
+      "port": 11434
+    },
+    {
+      "name": "static-site",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8080"],
+      "port": 8080
+    },
+    {
+      "name": "exam-review",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8090", "-d", "/Users/cengzhenhong/烏龜世界/段考複習"],
+      "port": 8090
+    }
+  ]
+}
