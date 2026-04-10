@@ -46,6 +46,52 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  shark-music-bot:
+    build: ./shark-music-bot
+    environment:
+      - TZ=Asia/Taipei
+    volumes:
+      - shark_bot_data:/app/data
+    restart: unless-stopped
+
+  turtle-monitor:
+    build: ./turtle-monitor
+    environment:
+      - TZ=Asia/Taipei
+    volumes:
+      - turtle_monitor_data:/app/mac_data
+    restart: unless-stopped
+
+  question-bank-mcp-server:
+    build: ./question-bank-mcp-server
+    environment:
+      - TZ=Asia/Taipei
+      - TRANSPORT=http
+      - PORT=3456
+    ports:
+      - '3456:3456'
+    volumes:
+      # MCP server might need access to local folders for questions, mapping root dir
+      - .:/Users/cengzhenhong/烏龜世界
+    restart: unless-stopped
+
+  openclaw:
+    build: ./openclaw
+    ports:
+      - '18789:18789'
+    environment:
+      - HOST=0.0.0.0
+      - TZ=Asia/Taipei
+      - OLLAMA_HOST=http://host.docker.internal:11434
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - openclaw_data:/root/.openclaw
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   n8n_data:
+  shark_bot_data:
+  turtle_monitor_data:
+  openclaw_data:
