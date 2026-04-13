@@ -202,4 +202,58 @@ openclaw update      # 更新版本
 
 ---
 
+---
+
+## 🌿 ESP32 IoT 環境監測系統
+
+ESP32 / ESP8266 開發板每 5 分鐘將感測器資料上傳至 **turtle-monitor**（`http://localhost:8080`）。
+
+### 硬體配置
+
+**ESP32**（`esp32/`）— 環境監測
+
+| 感測器 | 接腳 | 用途 |
+|---|---|---|
+| DHT11 | GPIO 4 | 溫度 / 濕度 |
+| MH-Z19B CO₂ | UART2 TX=17, RX=16 | CO₂ 濃度（400–5000 ppm） |
+| 光敏電阻 | GPIO 34 (ADC1) | 環境光照 |
+| HC-SR501 PIR | GPIO 25 | 移動偵測 |
+| SSD1306 OLED | I2C SCL=22, SDA=21 | 即時顯示 |
+| 有源蜂鳴器 | GPIO 32 | CO₂ 超標 / 高溫警報 |
+| 繼電器 1 / 2 | GPIO 26 / 27 | 外部設備控制 |
+
+**ESP8266**（`esp8266/`）— 自動澆水
+
+| 感測器 | 接腳 | 用途 |
+|---|---|---|
+| DHT22 | GPIO 4 (D2) | 溫度 / 濕度 |
+| 土壤濕度感測器 | A0 | 土壤含水量 |
+| 繼電器 + 沉水馬達 | GPIO 5 (D1) | 土壤乾燥時自動澆水 |
+
+### 燒錄步驟
+
+```bash
+# 1. 安裝 Thonny IDE：https://thonny.org/
+# 2. 複製設定檔並填入 WiFi / 伺服器 IP
+cp esp32/config.py  esp32/config.local.py   # 本機修改，不提交
+cp esp8266/config.py esp8266/config.local.py
+# 3. 用 Thonny 將 config.py（填好的版本）和 main.py 上傳至各開發板
+# 4. 重啟開發板，觀察 OLED 顯示與 Thonny Shell 輸出
+```
+
+> **注意**：`SERVER_URL` 填執行 `docker-compose up -d` 那台電腦的區網 IP，例如 `http://192.168.1.100:8080`。
+
+### turtle-monitor API
+
+| 端點 | 方法 | 說明 |
+|---|---|---|
+| `http://localhost:8080/` | GET | 即時狀態頁面（每 60 秒自動重整） |
+| `/sensors` | POST | 接收感測器資料（ESP 裝置使用） |
+| `/sensors/latest` | GET | 所有裝置最新一筆讀數 |
+| `/sensors/history` | GET | 指定裝置歷史記錄（?device_id=&limit=） |
+| `/sensors/summary` | GET | 過去 24 小時平均值（OpenClaw skill 用） |
+| `/health` | GET | 服務健康狀態 |
+
+---
+
 *烏龜計畫 · 彰化縣立和美高級中學 · 曾圳鴻 · 2025-2026*

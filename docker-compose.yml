@@ -58,6 +58,8 @@ services:
     build: ./turtle-monitor
     environment:
       - TZ=Asia/Taipei
+    ports:
+      - '8080:8080'
     volumes:
       - turtle_monitor_data:/app/mac_data
     restart: unless-stopped
